@@ -41,5 +41,9 @@ wl-safe)
 esac
 
 echo "=== snapshelf-run $MODE $APP $(date)" >&2
+case "$MODE" in x11-*)
+    # keep the app's main window on the whole screen (minus the X keyboard), see snapshelf-xmax
+    "$(dirname "$(readlink -f "$0")")/snapshelf-xmax" 120 >/dev/null 2>&1 &
+esac
 exec snap run --shell "$APP" -c "$SETUP
 exec \$SNAP/$CMD"

@@ -267,7 +267,21 @@ Page {
                         return (s && !s.available) ? t + "  (" + s.reason + ")" : t
                     })
                     selectedIndex: Math.max(0, dp.modeNames.indexOf(dp.d.launch_mode || "default"))
-                    onDelegateClicked: dp.setMode(dp.modeNames[index])
+                    onDelegateClicked: {
+                        var m = dp.modeNames[index]
+                        // back to the snap's own launcher: show it again first
+                        if (m === "default" && dp.d.original_hidden) root.run("unhide", dp.snapName, ["default"])
+                        else dp.setMode(m)
+                    }
+                }
+                SwitchRow {
+                    visible: (dp.d.launch_mode || "").indexOf("x11") === 0
+                    width: parent.width
+                    checked: !!dp.d.original_hidden
+                    enabled: !dp.queued
+                    titleText: i18n.tr("Hide the original icon")
+                    subtitleText: i18n.tr("Keep only the working icon, with the app's normal name. The app stays installed in devmode")
+                    onToggled: root.run(value ? "hide" : "unhide", dp.snapName, [])
                 }
                 Flow {
                     width: parent.width

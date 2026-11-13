@@ -2,14 +2,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: snapshelf\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-13 18:54+0100\n"
+"POT-Creation-Date: 2026-11-13 19:15+0100\n"
 "Language: it\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: qml/Main.qml:38 qml/pages/DetailPage.qml:358
+#: qml/Main.qml:38 qml/pages/DetailPage.qml:372
 msgid "GPU"
 msgstr "GPU"
 
@@ -57,7 +57,7 @@ msgstr "Ricarica"
 msgid "Discover"
 msgstr "Scopri"
 
-#: qml/pages/BrowsePage.qml:56 qml/pages/SettingsPage.qml:65
+#: qml/pages/BrowsePage.qml:56 qml/pages/SettingsPage.qml:80
 msgid "Installed"
 msgstr "Installati"
 
@@ -129,7 +129,7 @@ msgstr "Apri nel sito dello Snap Store"
 msgid "verified"
 msgstr "verificato"
 
-#: qml/pages/DetailPage.qml:144 qml/pages/DetailPage.qml:354
+#: qml/pages/DetailPage.qml:144 qml/pages/DetailPage.qml:368
 msgid "Channel"
 msgstr "Canale"
 
@@ -137,7 +137,7 @@ msgstr "Canale"
 msgid "Install (with GPU)"
 msgstr "Installa (con GPU)"
 
-#: qml/pages/DetailPage.qml:161 qml/pages/SettingsPage.qml:66
+#: qml/pages/DetailPage.qml:161 qml/pages/SettingsPage.qml:81
 msgid "Install"
 msgstr "Installa"
 
@@ -193,79 +193,87 @@ msgstr "Se l'app non si apre, resta sulla schermata di avvio o mostra una finest
 msgid "Launch mode"
 msgstr "Modalità di avvio"
 
-#: qml/pages/DetailPage.qml:276
+#: qml/pages/DetailPage.qml:282
+msgid "Hide the original icon"
+msgstr "Nascondi l'icona originale"
+
+#: qml/pages/DetailPage.qml:283
+msgid "Keep only the working icon, with the app's normal name. The app stays installed in devmode"
+msgstr "Tiene solo l'icona che funziona, con il nome normale dell'app. L'app resta installata in devmode"
+
+#: qml/pages/DetailPage.qml:290
 msgid "Diagnose"
 msgstr "Diagnosi"
 
-#: qml/pages/DetailPage.qml:279
+#: qml/pages/DetailPage.qml:293
 msgid "Stop the app"
 msgstr "Chiudi l'app"
 
-#: qml/pages/DetailPage.qml:281
+#: qml/pages/DetailPage.qml:295
 msgid "Stopped (%1 processes)"
 msgstr "Chiusa (%1 processi)"
 
-#: qml/pages/DetailPage.qml:284
+#: qml/pages/DetailPage.qml:298
 msgid "Reset environment"
 msgstr "Rifai l'ambiente"
 
-#: qml/pages/DetailPage.qml:287
+#: qml/pages/DetailPage.qml:301
 msgid "Disconnect GPU"
 msgstr "Scollega la GPU"
 
-#: qml/pages/DetailPage.qml:288
+#: qml/pages/DetailPage.qml:302
 msgid "Disconnect the GPU?"
 msgstr "Scollegare la GPU?"
 
-#: qml/pages/DetailPage.qml:289
+#: qml/pages/DetailPage.qml:303
 msgid "The app will use software rendering. You can connect it again later."
 msgstr "L'app userà il rendering software. Potrai ricollegarla in seguito."
 
-#: qml/pages/DetailPage.qml:290
+#: qml/pages/DetailPage.qml:304
 msgid "Disconnect"
 msgstr "Scollega"
 
-#: qml/pages/DetailPage.qml:294
+#: qml/pages/DetailPage.qml:308
 msgid "Switch to devmode"
 msgstr "Passa a devmode"
 
-#: qml/pages/DetailPage.qml:327
+#: qml/pages/DetailPage.qml:341
 msgid "Apply"
 msgstr "Applica"
 
-#: qml/pages/DetailPage.qml:353
+#: qml/pages/DetailPage.qml:367
 msgid "Version"
 msgstr "Versione"
 
-#: qml/pages/DetailPage.qml:355
+#: qml/pages/DetailPage.qml:369
 msgid "Download size"
 msgstr "Dimensione download"
 
-#: qml/pages/DetailPage.qml:356
+#: qml/pages/DetailPage.qml:370
 msgid "Base"
 msgstr "Base"
 
-#: qml/pages/DetailPage.qml:357
+#: qml/pages/DetailPage.qml:371
 msgid "Confinement"
 msgstr "Confinamento"
 
-#: qml/pages/DetailPage.qml:358
+#: qml/pages/DetailPage.qml:372
 msgid "connected"
 msgstr "collegata"
 
-#: qml/pages/DetailPage.qml:358
+#: qml/pages/DetailPage.qml:372
 msgid "not connected"
 msgstr "non collegata"
 
-#: qml/pages/DetailPage.qml:358
+#: qml/pages/DetailPage.qml:372
 msgid "supported"
 msgstr "supportata"
 
-#: qml/pages/DetailPage.qml:358
+#: qml/pages/DetailPage.qml:372
 msgid "no"
 msgstr "no"
 
-#: qml/pages/DetailPage.qml:359
+#: qml/pages/DetailPage.qml:373
 msgid "License"
 msgstr "Licenza"
 
@@ -335,36 +343,56 @@ msgid "Snaps known to need it (Telegram, PdfCraft…) get the X11 + GPU launch m
 msgstr "Gli snap che ne hanno bisogno (Telegram, PdfCraft…) ricevono la modalità X11 + GPU subito dopo l'installazione"
 
 #: qml/pages/SettingsPage.qml:57
+msgid "Hide icons that do not work"
+msgstr "Nascondi le icone che non funzionano"
+
+#: qml/pages/SettingsPage.qml:58
+msgid "When a known fix is applied, hide the snap's own icon and give its name to the working one"
+msgstr "Quando si applica un fix noto, nasconde l'icona originale dello snap e dà il suo nome a quella che funziona"
+
+#: qml/pages/SettingsPage.qml:64
+msgid "On-screen keyboard in the X11 modes"
+msgstr "Tastiera a schermo nelle modalità X11"
+
+#: qml/pages/SettingsPage.qml:66
+msgid "Lomiri's keyboard does not appear in X11 apps: start the X keyboard with them"
+msgstr "La tastiera di Lomiri non compare nelle app X11: avvia con loro la tastiera X"
+
+#: qml/pages/SettingsPage.qml:67
+msgid "Needs the X keyboard helper (nabu-xkbd)"
+msgstr "Serve l'helper della tastiera X (nabu-xkbd)"
+
+#: qml/pages/SettingsPage.qml:72
 msgid "Hide unsupported snaps"
 msgstr "Nascondi gli snap non supportati"
 
-#: qml/pages/SettingsPage.qml:58
+#: qml/pages/SettingsPage.qml:73
 msgid "Do not show classic snaps in the results"
 msgstr "Non mostrare gli snap classic nei risultati"
 
-#: qml/pages/SettingsPage.qml:61
+#: qml/pages/SettingsPage.qml:76
 msgid "System checks"
 msgstr "Controlli di sistema"
 
-#: qml/pages/SettingsPage.qml:64
+#: qml/pages/SettingsPage.qml:79
 msgid "GPU support for snaps (hybris-2404)"
 msgstr "Supporto GPU per gli snap (hybris-2404)"
 
-#: qml/pages/SettingsPage.qml:65
+#: qml/pages/SettingsPage.qml:80
 msgid "Not installed: snaps can only use software rendering"
 msgstr "Non installato: gli snap possono usare solo il rendering software"
 
-#: qml/pages/SettingsPage.qml:71
+#: qml/pages/SettingsPage.qml:86
 msgid "Snaps see the Android GPU drivers"
 msgstr "Gli snap vedono i driver GPU Android"
 
-#: qml/pages/SettingsPage.qml:73
+#: qml/pages/SettingsPage.qml:88
 msgid "SNAP_REEXEC=0 is set: snaps start with the Ubuntu Touch snapd tools"
 msgstr ""
 "SNAP_REEXEC=0 è impostato: gli snap partono con gli strumenti snapd di "
 "Ubuntu Touch"
 
-#: qml/pages/SettingsPage.qml:74
+#: qml/pages/SettingsPage.qml:89
 msgid ""
 "GPU snaps may fail with 'libEGL.so not found'. The fix makes snaps use the "
 "Ubuntu Touch snapd tools (takes full effect after logging in again)"
@@ -373,72 +401,72 @@ msgstr ""
 "usare agli snap gli strumenti snapd di Ubuntu Touch (vale del tutto dopo un "
 "nuovo accesso)"
 
-#: qml/pages/SettingsPage.qml:75
+#: qml/pages/SettingsPage.qml:90
 msgid "Fix"
 msgstr "Correggi"
 
-#: qml/pages/SettingsPage.qml:76 qml/pages/SettingsPage.qml:109
-#: qml/pages/SettingsPage.qml:122
+#: qml/pages/SettingsPage.qml:91 qml/pages/SettingsPage.qml:124
+#: qml/pages/SettingsPage.qml:137
 msgid "Done"
 msgstr "Fatto"
 
-#: qml/pages/SettingsPage.qml:80
+#: qml/pages/SettingsPage.qml:95
 msgid "Compatibility mode (X11 + Turnip)"
 msgstr "Modalità compatibile (X11 + Turnip)"
 
-#: qml/pages/SettingsPage.qml:81
+#: qml/pages/SettingsPage.qml:96
 msgid "Available"
 msgstr "Disponibile"
 
-#: qml/pages/SettingsPage.qml:87
+#: qml/pages/SettingsPage.qml:102
 msgid "Reset all snap environments"
 msgstr "Rifai l'ambiente di tutti gli snap"
 
-#: qml/pages/SettingsPage.qml:88
+#: qml/pages/SettingsPage.qml:103
 msgid "Fixes snaps that stopped seeing the GPU after an update or a connection change. Running snaps are not stopped"
 msgstr "Ripara gli snap che non vedono più la GPU dopo un aggiornamento o un cambio di collegamento. Gli snap aperti non vengono chiusi"
 
-#: qml/pages/SettingsPage.qml:89
+#: qml/pages/SettingsPage.qml:104
 msgid "Reset"
 msgstr "Rifai"
 
-#: qml/pages/SettingsPage.qml:95
+#: qml/pages/SettingsPage.qml:110
 msgid "The snapd snap is installed as well"
 msgstr "È installato anche lo snap snapd"
 
-#: qml/pages/SettingsPage.qml:98
+#: qml/pages/SettingsPage.qml:113
 msgid "Privacy"
 msgstr "Privacy"
 
-#: qml/pages/SettingsPage.qml:103
+#: qml/pages/SettingsPage.qml:118
 msgid "Forget the password"
 msgstr "Dimentica la password"
 
-#: qml/pages/SettingsPage.qml:104
+#: qml/pages/SettingsPage.qml:119
 msgid "The password is kept only in memory and never written to disk"
 msgstr "La password resta solo in memoria e non viene mai scritta su disco"
 
-#: qml/pages/SettingsPage.qml:108
+#: qml/pages/SettingsPage.qml:123
 msgid "Forget"
 msgstr "Dimentica"
 
-#: qml/pages/SettingsPage.qml:117
+#: qml/pages/SettingsPage.qml:132
 msgid "Clear the Store cache"
 msgstr "Svuota la cache dello Store"
 
-#: qml/pages/SettingsPage.qml:118
+#: qml/pages/SettingsPage.qml:133
 msgid "Store answers are cached for 5 minutes"
 msgstr "Le risposte dello Store restano in cache per 5 minuti"
 
-#: qml/pages/SettingsPage.qml:121
+#: qml/pages/SettingsPage.qml:136
 msgid "Clear"
 msgstr "Svuota"
 
-#: qml/pages/SettingsPage.qml:127
+#: qml/pages/SettingsPage.qml:142
 msgid "About"
 msgstr "Informazioni"
 
-#: qml/pages/SettingsPage.qml:133
+#: qml/pages/SettingsPage.qml:148
 msgid ""
 "Find and install arm64 snaps that work on Ubuntu Touch. Not affiliated with "
 "Canonical. This project was created in cooperation with an AI assistant."
@@ -451,32 +479,32 @@ msgstr ""
 msgid "installed"
 msgstr "installato"
 
-#: qml/backend.py:190
+#: qml/backend.py:195
 msgid "Classic confinement: not supported on Ubuntu Touch"
 msgstr "Confinamento classic: non supportato su Ubuntu Touch"
 
-#: qml/backend.py:192
+#: qml/backend.py:197
 msgid "Works, GPU accelerated (hybris-2404)"
 msgstr "Funziona, con accelerazione GPU (hybris-2404)"
 
-#: qml/backend.py:195
+#: qml/backend.py:200
 msgid "core24: GPU acceleration possible"
 msgstr "core24: accelerazione GPU possibile"
 
-#: qml/backend.py:196
+#: qml/backend.py:201
 msgid "core24: works, software rendering"
 msgstr "core24: funziona, rendering software"
 
-#: qml/backend.py:198
+#: qml/backend.py:203
 #, python-format
 msgid "%s: works, software rendering"
 msgstr "%s: funziona, rendering software"
 
-#: qml/backend.py:199
+#: qml/backend.py:204
 msgid "Should work"
 msgstr "Dovrebbe funzionare"
 
-#: qml/backend.py:207
+#: qml/backend.py:212
 msgid ""
 "Wayland only: the window may stay empty on Mir 1.8 (try the compatibility "
 "mode)"
@@ -484,189 +512,205 @@ msgstr ""
 "Solo Wayland: la finestra potrebbe restare vuota su Mir 1.8 (prova la "
 "modalità compatibile)"
 
-#: qml/backend.py:209
+#: qml/backend.py:214
 msgid "Uses OpenGL without hybris: 3D will be slow (software)"
 msgstr "Usa OpenGL senza hybris: il 3D sarà lento (software)"
 
-#: qml/backend.py:211
+#: qml/backend.py:216
 msgid "Installed in devmode (needed by the 4.14 kernel)"
 msgstr "Installato in devmode (necessario con il kernel 4.14)"
 
-#: qml/backend.py:287 qml/backend.py:306
+#: qml/backend.py:292 qml/backend.py:311
 #, python-format
 msgid "Snap Store not reachable: %s"
 msgstr "Snap Store non raggiungibile: %s"
 
-#: qml/backend.py:328
+#: qml/backend.py:333
 msgid "No arm64 version of this snap"
 msgstr "Nessuna versione arm64 di questo snap"
 
-#: qml/backend.py:539
+#: qml/backend.py:572
 msgid "Needs the nested X server helper (nabu-xland)"
 msgstr "Serve l'helper del server X annidato (nabu-xland)"
 
-#: qml/backend.py:541
+#: qml/backend.py:574
 msgid "Needs Mesa Turnip built for KGSL"
 msgstr "Serve Mesa Turnip compilato per KGSL"
 
-#: qml/backend.py:653 qml/backend.py:654
+#: qml/backend.py:708 qml/backend.py:709
 msgid "The GPU content is connected but the snap environment is older: reset it"
 msgstr "La GPU è collegata ma l'ambiente dello snap è più vecchio: rifallo"
 
-#: qml/backend.py:655 qml/backend.py:656
+#: qml/backend.py:710 qml/backend.py:711
 msgid "The snap cannot see the Android drivers (/android): use the Ubuntu Touch snapd tools and reset the environment"
 msgstr "Lo snap non vede i driver Android (/android): usa gli strumenti snapd di Ubuntu Touch e rifai l'ambiente"
 
-#: qml/backend.py:657 qml/backend.py:658 qml/backend.py:659 qml/backend.py:661
-#: qml/backend.py:662
+#: qml/backend.py:712 qml/backend.py:713 qml/backend.py:714 qml/backend.py:716
+#: qml/backend.py:717
 msgid "The app's EGL setup does not work with libhybris on Wayland: start it in X11 with the Turnip GPU driver"
 msgstr "La configurazione EGL dell'app non funziona con libhybris su Wayland: avviala in X11 con il driver GPU Turnip"
 
-#: qml/backend.py:660
+#: qml/backend.py:715
 msgid "The GPU device was lost: start the app in X11 with the Turnip GPU driver"
 msgstr "Il dispositivo GPU è stato perso: avvia l'app in X11 con il driver GPU Turnip"
 
-#: qml/backend.py:663
+#: qml/backend.py:718
 msgid "The app cannot connect to Wayland: start it in X11"
 msgstr "L'app non riesce a collegarsi a Wayland: avviala in X11"
 
-#: qml/backend.py:664
+#: qml/backend.py:719
 msgid "The app needs an X server: start it in X11"
 msgstr "L'app ha bisogno di un server X: avviala in X11"
 
-#: qml/backend.py:665
+#: qml/backend.py:720
 msgid "The app crashed: if it uses the GPU, try it in X11 with the Turnip GPU driver"
 msgstr "L'app è andata in crash: se usa la GPU, provala in X11 con il driver GPU Turnip"
 
-#: qml/backend.py:666
+#: qml/backend.py:721
 msgid "AppArmor blocks the app: switch it to devmode"
 msgstr "AppArmor blocca l'app: passala a devmode"
 
-#: qml/backend.py:667
+#: qml/backend.py:722
 msgid "Permission denied: switch the app to devmode"
 msgstr "Permesso negato: passa l'app a devmode"
 
-#: qml/backend.py:714
+#: qml/backend.py:769
 msgid "No log lines in the last hour: open the app once, then run the diagnosis again"
 msgstr "Nessuna riga di log nell'ultima ora: apri l'app una volta, poi ripeti la diagnosi"
 
-#: qml/backend.py:716
+#: qml/backend.py:771
 msgid "No known problem found in the log"
 msgstr "Nel log non c'è nessun problema noto"
 
-#: qml/backend.py:844
+#: qml/backend.py:900
 msgid "Installing GPU support (hybris-2404)…"
 msgstr "Installazione del supporto GPU (hybris-2404)…"
 
-#: qml/backend.py:847
+#: qml/backend.py:903
 msgid "Connecting the GPU…"
 msgstr "Collegamento della GPU…"
 
-#: qml/backend.py:858
+#: qml/backend.py:914
 #, python-format
 msgid "Installing %s…"
 msgstr "Installazione di %s…"
 
-#: qml/backend.py:860
+#: qml/backend.py:916
 msgid "Installation failed"
 msgstr "Installazione non riuscita"
 
-#: qml/backend.py:861
+#: qml/backend.py:917
 msgid "Installed. You will find it in the app drawer."
 msgstr "Installato. Lo trovi tra le app."
 
-#: qml/backend.py:864
+#: qml/backend.py:920
 msgid "Installed with GPU acceleration. You will find it in the app drawer."
 msgstr "Installato con accelerazione GPU. Lo trovi tra le app."
 
-#: qml/backend.py:865
+#: qml/backend.py:921
 #, python-format
 msgid "Installed, but the GPU could not be connected: %s"
 msgstr "Installato, ma non è stato possibile collegare la GPU: %s"
 
-#: qml/backend.py:869
+#: qml/backend.py:925
+msgid "Known fix applied: the icon starts the working version."
+msgstr "Fix noto applicato: l'icona avvia la versione che funziona."
+
+#: qml/backend.py:927
 msgid "Known fix applied: use the \"(GPU)\" icon."
 msgstr "Fix noto applicato: usa l'icona \"(GPU)\"."
 
-#: qml/backend.py:871
+#: qml/backend.py:929
 msgid "Known fix applied."
 msgstr "Fix noto applicato."
 
-#: qml/backend.py:874
+#: qml/backend.py:932
 msgid "Added to the launcher."
 msgstr "Aggiunto alla barra laterale."
 
-#: qml/backend.py:880
+#: qml/backend.py:938
 #, python-format
 msgid "Removing %s…"
 msgstr "Rimozione di %s…"
 
-#: qml/backend.py:885
+#: qml/backend.py:943
 msgid "Removed."
 msgstr "Rimosso."
 
-#: qml/backend.py:886
+#: qml/backend.py:944
 msgid "Removal failed"
 msgstr "Rimozione non riuscita"
 
-#: qml/backend.py:890
+#: qml/backend.py:948
 #, python-format
 msgid "Updating %s…"
 msgstr "Aggiornamento di %s…"
 
-#: qml/backend.py:891
+#: qml/backend.py:949
 msgid "Updated."
 msgstr "Aggiornato."
 
-#: qml/backend.py:891
+#: qml/backend.py:949
 msgid "Update failed"
 msgstr "Aggiornamento non riuscito"
 
-#: qml/backend.py:895
+#: qml/backend.py:953
 #, python-format
 msgid "Switching to %s…"
 msgstr "Passaggio a %s…"
 
-#: qml/backend.py:896
+#: qml/backend.py:954
 #, python-format
 msgid "Now following %s."
 msgstr "Ora segue %s."
 
-#: qml/backend.py:896
+#: qml/backend.py:954
 msgid "Channel switch failed"
 msgstr "Cambio di canale non riuscito"
 
-#: qml/backend.py:901
+#: qml/backend.py:959
 msgid "GPU connected."
 msgstr "GPU collegata."
 
-#: qml/backend.py:913
+#: qml/backend.py:971
 msgid "Environment reset. Open the app again."
 msgstr "Ambiente rifatto. Riapri l'app."
 
-#: qml/backend.py:920
+#: qml/backend.py:978
 #, python-format
 msgid "Could not reset: %s"
 msgstr "Impossibile rifare: %s"
 
-#: qml/backend.py:921
+#: qml/backend.py:979
 #, python-format
 msgid "All snap environments reset (%d)."
 msgstr "Ambiente rifatto per tutti gli snap (%d)."
 
-#: qml/backend.py:930
+#: qml/backend.py:988
 msgid "GPU disconnected: the app now uses software rendering."
 msgstr "GPU scollegata: ora l'app usa il rendering software."
 
-#: qml/backend.py:934
+#: qml/backend.py:993
+msgid "Choose an X11 launch mode first: the app would have no working icon"
+msgstr "Scegli prima una modalità X11: altrimenti l'app resterebbe senza un'icona funzionante"
+
+#: qml/backend.py:999
+msgid "The original icon is hidden."
+msgstr "L'icona originale è nascosta."
+
+#: qml/backend.py:1015
+msgid "The original icon is back (it may need a moment to appear)."
+msgstr "L'icona originale è tornata (può servire qualche istante perché compaia)."
+
+#: qml/backend.py:1027
 #, python-format
 msgid "Switching %s to devmode…"
 msgstr "Passaggio di %s a devmode…"
 
-#: qml/backend.py:935
+#: qml/backend.py:1028
 msgid "Now in devmode."
 msgstr "Ora è in devmode."
 
-#: qml/backend.py:935
+#: qml/backend.py:1028
 msgid "Could not switch to devmode"
 msgstr "Impossibile passare a devmode"

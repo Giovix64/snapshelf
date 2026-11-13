@@ -1,0 +1,186 @@
+#!/usr/bin/python3
+"""Maximize the first main window of an app in the (nested) X server given by $DISPLAY.
+
+Some apps draw their own frame (Telegram Desktop, …); the minimal window manager of the nested X
+server then leaves them small in the middle of the screen. This waits for the first managed window
+(it has WM_STATE) of at least 600x400 that is not the on-screen keyboard, and keeps it on the whole
+screen minus the X on-screen keyboard (matchbox-keyboard) when that is shown. Dialogs and menus are
+left alone. It exits when the window is closed.
+
+usage: snapshelf-xmax [seconds to wait, default 60]
+Only needs libX11 (ctypes), no extra packages.
+"""
+import ctypes
+import ctypes.util
+import sys
+import time
+
+MIN_W, MIN_H = 600, 400
+SKIP_CLASSES = ("matchbox-keyboard", "Matchbox-keyboard", "matchbox-panel", "Onboard", "onboard")
+
+Window = ctypes.c_ulong
+Atom = ctypes.c_ulong
+
+
+class XWindowAttributes(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_int), ("y", ctypes.c_int), ("width", ctypes.c_int), ("height", ctypes.c_int),
+                ("border_width", ctypes.c_int), ("depth", ctypes.c_int), ("visual", ctypes.c_void_p),
+                ("root", Window), ("class_", ctypes.c_int), ("bit_gravity", ctypes.c_int),
+                ("win_gravity", ctypes.c_int), ("backing_store", ctypes.c_int),
+                ("backing_planes", ctypes.c_ulong), ("backing_pixel", ctypes.c_ulong),
+                ("save_under", ctypes.c_int), ("colormap", ctypes.c_ulong), ("map_installed", ctypes.c_int),
+                ("map_state", ctypes.c_int), ("all_event_masks", ctypes.c_long),
+                ("your_event_mask", ctypes.c_long), ("do_not_propagate_mask", ctypes.c_long),
+                ("override_redirect", ctypes.c_int), ("screen", ctypes.c_void_p)]
+
+
+class XClassHint(ctypes.Structure):
+    _fields_ = [("res_name", ctypes.c_void_p), ("res_class", ctypes.c_void_p)]   # freed with XFree
+
+
+IS_VIEWABLE = 2
+
+
+def main():
+    wait = float(sys.argv[1]) if len(sys.argv) > 1 else 60.0
+    x = ctypes.cdll.LoadLibrary(ctypes.util.find_library("X11") or "libX11.so.6")
+    x.XOpenDisplay.restype = ctypes.c_void_p
+    x.XOpenDisplay.argtypes = [ctypes.c_char_p]
+    x.XDefaultRootWindow.restype = Window
+    x.XDefaultRootWindow.argtypes = [ctypes.c_void_p]
+    x.XDisplayWidth.argtypes = x.XDisplayHeight.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    x.XInternAtom.restype = Atom
+    x.XInternAtom.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+    x.XQueryTree.argtypes = [ctypes.c_void_p, Window, ctypes.POINTER(Window), ctypes.POINTER(Window),
+                             ctypes.POINTER(ctypes.POINTER(Window)), ctypes.POINTER(ctypes.c_uint)]
+    x.XGetWindowAttributes.argtypes = [ctypes.c_void_p, Window, ctypes.POINTER(XWindowAttributes)]
+    x.XGetWindowProperty.argtypes = [ctypes.c_void_p, Window, Atom, ctypes.c_long, ctypes.c_long, ctypes.c_int,
+                                     Atom, ctypes.POINTER(Atom), ctypes.POINTER(ctypes.c_int),
+                                     ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ulong),
+                                     ctypes.POINTER(ctypes.c_void_p)]
+    x.XGetClassHint.argtypes = [ctypes.c_void_p, Window, ctypes.POINTER(XClassHint)]
+    x.XMoveResizeWindow.argtypes = [ctypes.c_void_p, Window, ctypes.c_int, ctypes.c_int, ctypes.c_uint, ctypes.c_uint]
+    x.XFree.argtypes = [ctypes.c_void_p]
+    x.XSync.argtypes = [ctypes.c_void_p, ctypes.c_int]
+
+    # the X server may still be starting
+    dpy = None
+    end = time.monotonic() + wait
+    while dpy is None and time.monotonic() < end:
+        dpy = x.XOpenDisplay(None) or None
+        if dpy is None:
+            time.sleep(0.5)
+    if dpy is None:
+        return 1
+    # ignore X errors (windows can disappear while we look at them)
+    handler_type = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+    ignore = handler_type(lambda d, e: 0)
+    x.XSetErrorHandler(ignore)
+
+    root = x.XDefaultRootWindow(dpy)
+    sw, sh = x.XDisplayWidth(dpy, 0), x.XDisplayHeight(dpy, 0)
+    wm_state = x.XInternAtom(dpy, b"WM_STATE", 0)
+    wm_type = x.XInternAtom(dpy, b"_NET_WM_WINDOW_TYPE", 0)
+    # window types that are not an app's main window (matchbox-keyboard is a DOCK/TOOLBAR)
+    not_main = {x.XInternAtom(dpy, b"_NET_WM_WINDOW_TYPE_" + t, 0)
+                for t in (b"DOCK", b"TOOLBAR", b"DIALOG", b"SPLASH", b"MENU", b"UTILITY", b"NOTIFICATION",
+                          b"POPUP_MENU", b"DROPDOWN_MENU", b"TOOLTIP", b"DESKTOP")}
+    docks = {x.XInternAtom(dpy, b"_NET_WM_WINDOW_TYPE_" + t, 0) for t in (b"DOCK", b"TOOLBAR")}
+
+    def children(w):
+        r, p = Window(), Window()
+        kids = ctypes.POINTER(Window)()
+        n = ctypes.c_uint()
+        if not x.XQueryTree(dpy, w, ctypes.byref(r), ctypes.byref(p), ctypes.byref(kids), ctypes.byref(n)):
+            return []
+        out = [kids[i] for i in range(n.value)]
+        if kids:
+            x.XFree(kids)
+        return out
+
+    def window_types(w):
+        t, f = Atom(), ctypes.c_int()
+        n, after = ctypes.c_ulong(), ctypes.c_ulong()
+        data = ctypes.c_void_p()
+        x.XGetWindowProperty(dpy, w, wm_type, 0, 16, 0, 4, ctypes.byref(t), ctypes.byref(f),   # 4 = XA_ATOM
+                             ctypes.byref(n), ctypes.byref(after), ctypes.byref(data))
+        out = set()
+        if data:
+            arr = ctypes.cast(data, ctypes.POINTER(ctypes.c_ulong))
+            out = {arr[i] for i in range(n.value)}
+            x.XFree(data)
+        return out
+
+    def has_wm_state(w):
+        t, f = Atom(), ctypes.c_int()
+        n, after = ctypes.c_ulong(), ctypes.c_ulong()
+        data = ctypes.c_void_p()
+        x.XGetWindowProperty(dpy, w, wm_state, 0, 0, 0, 0, ctypes.byref(t), ctypes.byref(f),
+                             ctypes.byref(n), ctypes.byref(after), ctypes.byref(data))
+        if data:
+            x.XFree(data)
+        return t.value != 0
+
+    def wm_class(w):
+        h = XClassHint()
+        if not x.XGetClassHint(dpy, w, ctypes.byref(h)):
+            return ""
+        parts = []
+        for ptr in (h.res_class, h.res_name):
+            parts.append(ctypes.string_at(ptr).decode(errors="replace") if ptr else "")
+            if ptr:
+                x.XFree(ptr)
+        return "/".join(parts)
+
+    def candidates():
+        # client windows: children of root, or grandchildren when the WM reparents them in a frame
+        for top in children(root):
+            for w in [top] + children(top):
+                if has_wm_state(w):
+                    yield w
+
+    def attrs(w):
+        a = XWindowAttributes()
+        return a if x.XGetWindowAttributes(dpy, w, ctypes.byref(a)) else None
+
+    def is_keyboard(w):
+        return bool(window_types(w) & docks) or any(s in wm_class(w) for s in SKIP_CLASSES)
+
+    def is_main(w):
+        return not (window_types(w) & not_main) and not any(s in wm_class(w) for s in SKIP_CLASSES)
+
+    # 1) wait for the app's main window
+    target = None
+    while target is None and time.monotonic() < end:
+        for w in candidates():
+            a = attrs(w)
+            if (a and a.map_state == IS_VIEWABLE and not a.override_redirect
+                    and a.width >= MIN_W and a.height >= MIN_H and is_main(w)):
+                target = w
+                break
+        else:
+            time.sleep(0.7)
+    if target is None:
+        return 0
+
+    # 2) keep it on the whole screen, minus the on-screen keyboard docked at the bottom (if shown).
+    #    Exits when the window is gone (the app was closed).
+    while True:
+        a = attrs(target)
+        if a is None:
+            return 0
+        if a.map_state == IS_VIEWABLE:
+            kb = 0
+            for w in candidates():
+                k = attrs(w)
+                if k and k.map_state == IS_VIEWABLE and is_keyboard(w):
+                    kb = max(kb, k.height)
+            h = sh - kb
+            if (a.x, a.y, a.width, a.height) != (0, 0, sw, h):
+                x.XMoveResizeWindow(dpy, target, 0, 0, sw, h)
+                x.XSync(dpy, 0)
+        time.sleep(1.0)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -52,6 +52,21 @@ Page {
                 subtitleText: i18n.tr("Snaps known to need it (Telegram, PdfCraft…) get the X11 + GPU launch mode right after installing")
             }
             SwitchRow {
+                checked: !!sp.s.hide_original
+                onToggled: sp.set("hide_original", value)
+                titleText: i18n.tr("Hide icons that do not work")
+                subtitleText: i18n.tr("When a known fix is applied, hide the snap's own icon and give its name to the working one")
+            }
+            SwitchRow {
+                checked: !!sp.s.x11_keyboard
+                enabled: !!sp.sys.x11_keyboard
+                onToggled: sp.set("x11_keyboard", value)
+                titleText: i18n.tr("On-screen keyboard in the X11 modes")
+                subtitleText: sp.sys.x11_keyboard
+                              ? i18n.tr("Lomiri's keyboard does not appear in X11 apps: start the X keyboard with them")
+                              : i18n.tr("Needs the X keyboard helper (nabu-xkbd)")
+            }
+            SwitchRow {
                 checked: !!sp.s.hide_unsupported
                 onToggled: sp.set("hide_unsupported", value)
                 titleText: i18n.tr("Hide unsupported snaps")
@@ -129,7 +144,7 @@ Page {
                 height: ab.height
                 ListItemLayout {
                     id: ab
-                    title.text: "Snapshelf 0.3.1"
+                    title.text: "Snapshelf 0.4.0"
                     subtitle.text: i18n.tr("Find and install arm64 snaps that work on Ubuntu Touch. Not affiliated with Canonical. " +
                                            "This project was created in cooperation with an AI assistant.")
                     subtitle.wrapMode: Text.WordWrap

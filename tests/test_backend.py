@@ -112,7 +112,9 @@ class DesktopTest(unittest.TestCase):
                   mock.patch.object(b, "_launcher_items", side_effect=lambda: list(self.items)),
                   mock.patch.object(b, "_set_launcher_items", side_effect=self._set),
                   mock.patch.object(b, "_app_command", return_value="bin/demo --flag"),
-                  mock.patch.object(b, "_helpers", return_value=("/x/nabu-xland", "/m"))]
+                  mock.patch.object(b, "_helpers", return_value=("/x/nabu-xland", "/m")),
+                  mock.patch.object(b, "_connected_original_ifaces", side_effect=lambda n: list(self.ifaces))]
+        self.ifaces = ["wayland"]          # the snap's own launcher is visible in Lomiri
         for p in self.p:
             p.start()
 
@@ -143,6 +145,10 @@ class DesktopTest(unittest.TestCase):
         text = open(path).read()
         self.assertIn("Name=Demo (GPU)", text)
         self.assertIn("snapshelf-run x11-gpu demo bin/demo --flag", text)
+        self.assertIn("Exec=/x/nabu-xland --host", text)                 # no X keyboard helper here
+        with mock.patch.object(b, "_xkbd", return_value="/x/nabu-xkbd"):
+            b.set_launch_mode("demo", "x11-gpu")
+        self.assertIn("Exec=env NABU_XLAND_KBD=1 /x/nabu-xland --host", open(path).read())
         self.assertEqual(self.items, ["appid://other", "appid://snapshelf-x11-demo.demo"])
         self.assertEqual(b.open_app("demo"), "snapshelf-x11-demo.demo")
         b.set_compat_mode("demo", False)
@@ -179,9 +185,24 @@ class DesktopTest(unittest.TestCase):
             open(os.path.join(self.userdir, old), "w").close()
         self.items = ["appid://snapshelf-x11-demo_demo", "appid://snapshelf-safe-foo--foo"]
         b._migrate_launchers()
-        self.assertEqual(sorted(os.listdir(self.userdir)),
-                         ["snapshelf-safe-foo.foo.desktop", "snapshelf-x11-demo.demo.desktop"])
-        self.assertEqual(self.items, ["appid://snapshelf-x11-demo.demo", "appid://snapshelf-safe-foo.foo"])
+        # demo is rewritten in its mode; foo is not installed any more, so its launcher goes away
+        self.assertEqual(sorted(os.listdir(self.userdir)), ["snapshelf-x11-demo.demo.desktop"])
+        self.assertEqual(self.items, ["appid://snapshelf-x11-demo.demo"])   # stale pin of foo dropped
+
+    def test_hidden_original_drops_suffix(self):
+        self.ifaces = []                   # unity7/wayland/lomiri disconnected: original hidden
+        self.assertTrue(b.original_hidden("demo"))
+        b.set_launch_mode("demo", "x11-gpu")
+        text = open(os.path.join(self.userdir, "snapshelf-x11-demo.demo.desktop")).read()
+        self.assertIn("Name=Demo\n", text)
+
+    def test_hide_needs_x11_mode(self):
+        ok, msg = b._hide_original("demo")      # still in the default mode
+        self.assertFalse(ok)
+
+    def test_launchers_in_use(self):
+        b.set_launch_mode("demo", "x11-sw")
+        self.assertEqual(b._launchers_in_use(), [("demo", "x11-sw")])
 
     def test_ids_have_no_lomiri_separators(self):
         b.set_launch_mode("demo", "x11-gpu")

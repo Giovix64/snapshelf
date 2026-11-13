@@ -46,7 +46,7 @@ _ = gettext.translation(APP_ID, os.path.join(APP_DIR, "share", "locale"), fallba
 STORE = "https://api.snapcraft.io/v2/snaps"
 ARCH = "arm64"
 HEADERS = {"Snap-Device-Series": "16", "Snap-Device-Architecture": ARCH,
-           "User-Agent": "snapshelf/0.3.1 (Ubuntu Touch)"}
+           "User-Agent": "snapshelf/0.4.0 (Ubuntu Touch)"}
 FIND_FIELDS = "title,summary,base,confinement,version,media,publisher,type"
 INFO_FIELDS = ("title,summary,description,base,confinement,version,media,publisher,license,"
                "website,contact,snap-yaml,download,created-at")
@@ -64,6 +64,8 @@ DEFAULT_SETTINGS = {
     "devmode": True,             # the 4.14 kernel lacks the BPF device cgroup strict snaps need
     "hide_unsupported": False,   # hide classic snaps from the results
     "known_fixes": True,         # apply the launch mode known snaps need (telegram-desktop…)
+    "x11_keyboard": True,        # start the X on-screen keyboard with apps in the X11 modes
+    "hide_original": True,       # with a known fix, hide the snap's own (non working) launcher
 }
 SNAP_DESKTOP_DIR = "/var/lib/snapd/desktop/applications"
 USER_APPS_DIR = os.path.join(HOME, ".local", "share", "applications")
@@ -142,6 +144,9 @@ def set_setting(key, value):
         os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
         with open(SETTINGS_FILE, "w") as f:
             json.dump(s, f, indent=1)
+        if key == "x11_keyboard":   # rewrite the X11 launchers with the new option
+            for name, mode in _launchers_in_use():
+                set_launch_mode(name, mode)
     return s
 
 
@@ -361,6 +366,7 @@ def info(name):
         "pinned": is_pinned(name),
         "compat_mode": compat_mode_enabled(name),
         "launch_mode": launch_mode(name) if inst else "default",
+        "original_hidden": original_hidden(name) if inst else False,
         "known_fix": KNOWN_FIXES.get(name, ""),
         "running": bool(running_pids(name)) if inst else False,
         "queued": name in _queued_names(),
@@ -526,6 +532,30 @@ def _find_first(paths, test):
     return ""
 
 
+def _xkbd():
+    """X on-screen keyboard helper of the nabu port (matchbox-keyboard in a Libertine container)."""
+    p = os.path.join(HOME, ".local", "bin", "nabu-xkbd")
+    return p if os.access(p, os.X_OK) else ""
+
+
+# Lomiri lists a snap app when one of these interfaces is connected (lomiri-app-launch)
+ORIGINAL_IFACES = ("unity7", "wayland", "lomiri")
+
+
+def _connected_original_ifaces(name):
+    res = snapd_get("/v2/connections?snap=" + urllib.parse.quote(name)) or {}
+    out = []
+    for c in res.get("established", []) or []:
+        if c.get("plug", {}).get("snap") == name and c.get("interface") in ORIGINAL_IFACES:
+            out.append(c.get("plug", {}).get("plug"))
+    return out
+
+
+def original_hidden(name):
+    """True when the snap's own launcher is hidden from Lomiri (no unity7/wayland/lomiri connection)."""
+    return bool(_snap_apps(name)) and not _connected_original_ifaces(name)
+
+
 def _helpers():
     xland = _find_first(XLAND_CANDIDATES, lambda p: os.access(p, os.X_OK))
     mesa = _find_first(MESA_CANDIDATES, lambda p: os.path.exists(os.path.join(p, "freedreno_icd.json")))
@@ -601,18 +631,23 @@ def set_launch_mode(name, mode):
                 os.remove(f)
     if mode != "default":
         xland, _mesa = _helpers()
+        # no "(GPU)" suffix when the original launcher is hidden: this one replaces it
+        suffix = "" if original_hidden(name) else MODES[mode]["suffix"]
         os.makedirs(USER_APPS_DIR, exist_ok=True)
         for a in _snap_apps(name):
             cmd = _app_command(name, a["app"])
             if not cmd:
                 continue
             snap_app = name if a["app"] == name else name + "." + a["app"]
-            argv = ([xland, "--host"] if MODES[mode]["xland"] else []) + \
+            # NABU_XLAND_KBD: the nested X server starts the X on-screen keyboard (Lomiri's keyboard
+            # does not show up for apps inside it); the app window is kept above it by snapshelf-xmax
+            xenv = ["env", "NABU_XLAND_KBD=1"] if (get_settings()["x11_keyboard"] and _xkbd()) else []
+            argv = (xenv + [xland, "--host"] if MODES[mode]["xland"] else []) + \
                 [_runner_path(), mode, snap_app] + shlex.split(cmd)
             with open(os.path.join(USER_APPS_DIR, _mode_id(mode, a["id"]) + ".desktop"), "w") as f:
                 f.write("[Desktop Entry]\nType=Application\nName=%s\nExec=%s\nIcon=%s\nTerminal=false\n"
                         "X-Lomiri-Supported-Orientations=%s\n%s\n"
-                        % (a["name"] + MODES[mode]["suffix"], " ".join(shlex.quote(x) for x in argv), a["icon"],
+                        % (a["name"] + suffix, " ".join(shlex.quote(x) for x in argv), a["icon"],
                            "landscape;" if MODES[mode]["xland"] else "landscape;portrait;", MARK_COMPAT))
     if was_pinned:
         pin(name, True)
@@ -642,6 +677,20 @@ def _migrate_launchers():
     fixed = [fix(i) if i.startswith("appid://snapshelf-") else i for i in items]
     if fixed != items:
         _set_launcher_items(fixed)
+    # rewrite existing launchers so they get the options of this version (X keyboard, runner flags…)
+    for name, mode in _launchers_in_use():
+        set_launch_mode(name, mode)
+
+
+def _launchers_in_use():
+    """(snap, mode) of the launch-mode launchers present in the user's applications folder."""
+    out = set()
+    for f in glob.glob(os.path.join(USER_APPS_DIR, "snapshelf-*.desktop")):
+        base = os.path.basename(f)[:-len(".desktop")]
+        for mode, m in MODES.items():
+            if mode != "default" and base.startswith(m["prefix"]) and "." in base[len(m["prefix"]):]:
+                out.add((base[len(m["prefix"]):].split(".", 1)[0], mode))
+    return sorted(out)
 
 
 def apply_known_fix(name):
@@ -763,6 +812,7 @@ def system_status():
         "reexec_ok": reexec_ok,
         "compat": sup["available"],
         "compat_reason": sup["reason"],
+        "x11_keyboard": bool(_xkbd()),
     }
 
 
@@ -871,7 +921,9 @@ def _job_install(name, channel, gpu):
             else _("Installed, but the GPU could not be connected: %s") % gerr
     if st["known_fixes"]:
         mode = apply_known_fix(name)
-        if mode == "x11-gpu":
+        if mode and st["hide_original"] and _hide_original(name)[0]:
+            msg += " " + _("Known fix applied: the icon starts the working version.")
+        elif mode == "x11-gpu":
             msg += " " + _("Known fix applied: use the \"(GPU)\" icon.")
         elif mode:
             msg += " " + _("Known fix applied.")
@@ -936,6 +988,41 @@ def _job_nogpu(name):
     return True, _("GPU disconnected: the app now uses software rendering.")
 
 
+def _hide_original(name):
+    if launch_mode(name) not in ("x11-gpu", "x11-sw"):
+        return False, _("Choose an X11 launch mode first: the app would have no working icon")
+    for plug in _connected_original_ifaces(name):
+        rc, out = _sudo(["snap", "disconnect", name + ":" + plug])
+        if rc != 0:
+            return False, out
+    set_launch_mode(name, launch_mode(name))      # rename the launcher without suffix
+    return True, _("The original icon is hidden.")
+
+
+def _job_hide(name):
+    return _hide_original(name)
+
+
+def _job_unhide(name, mode_after=""):
+    plugs = _yaml_plugs_of_installed(name)
+    for iface in ORIGINAL_IFACES:
+        if iface in plugs:
+            _sudo(["snap", "connect", name + ":" + iface])
+    if mode_after:
+        set_launch_mode(name, mode_after)
+    else:
+        set_launch_mode(name, launch_mode(name))
+    return True, _("The original icon is back (it may need a moment to appear).")
+
+
+def _yaml_plugs_of_installed(name):
+    try:
+        with open("/snap/%s/current/meta/snap.yaml" % name) as f:
+            return _yaml_plugs(f.read())
+    except OSError:
+        return set()
+
+
 def _job_devmode(name):
     ok, err = _run_change(name, ["refresh", "--devmode", name], _("Switching %s to devmode…") % name)
     return (True, _("Now in devmode.")) if ok else (False, err or _("Could not switch to devmode"))
@@ -962,7 +1049,8 @@ def _worker():
         try:
             fn = {"install": _job_install, "remove": _job_remove, "refresh": _job_refresh,
                   "switch": _job_switch, "gpu": _job_gpu, "nogpu": _job_nogpu, "reset": _job_reset,
-                  "reset-all": _job_reset_all, "devmode": _job_devmode}[kind]
+                  "reset-all": _job_reset_all, "devmode": _job_devmode, "hide": _job_hide,
+                  "unhide": _job_unhide}[kind]
             ok, msg = fn(name, *args)
         except Exception as e:  # never let the worker die
             ok, msg = False, str(e)

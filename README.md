@@ -48,6 +48,12 @@ them through snapd.
     For each one it suggests a fix you can apply with one tap.
   - **Repairs**: stop the app, reset the snap environment (mount namespace), connect or disconnect the hybris GPU,
     switch to devmode.
+  - **Hide the original icon**: when an X11 launch mode works, the snap's own launcher can be hidden
+    (Snapshelf disconnects the `unity7`/`wayland`/`lomiri` plugs Lomiri uses to list snap apps; the snap stays in
+    devmode, so it keeps working in X11) and the working launcher gets the app's normal name.
+  - In the X11 modes the app window is kept on the whole screen (`bin/snapshelf-xmax`, plain libX11 via ctypes):
+    apps with their own frame (Telegram) otherwise stay small in the middle. If the port's X keyboard helper is
+    present, the on-screen keyboard is started with the app and the window is kept above it.
   - **Known fixes**, applied automatically after installing: snaps known to need a launch mode (telegram-desktop,
     pdfcraft) get it straight away.
 - **System checks** with one-tap fixes:
@@ -98,6 +104,7 @@ Translations live in `po/`. Run `./update-translations.sh` after changing string
 | `qml/components/` | list delegate, badge and settings rows |
 | `qml/backend.py` | Store API, snapd REST, queue, launcher, compatibility mode, system checks |
 | `bin/snapshelf-run` | launch-mode runner (`x11-gpu`, `x11-sw`, `wl-safe`) inside the snap environment |
+| `bin/snapshelf-xmax` | keeps the app's main window on the whole nested X screen, above the X keyboard |
 | `po/` | translation template and Italian translation |
 | `tests/` | unit tests for the backend |
 
