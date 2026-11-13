@@ -46,6 +46,12 @@ Page {
                 subtitleText: i18n.tr("Needed on kernels without the BPF device cgroup (such as 4.14). Turn off only if strict snaps start on your device")
             }
             SwitchRow {
+                checked: !!sp.s.known_fixes
+                onToggled: sp.set("known_fixes", value)
+                titleText: i18n.tr("Apply known fixes")
+                subtitleText: i18n.tr("Snaps known to need it (Telegram, PdfCraft…) get the X11 + GPU launch mode right after installing")
+            }
+            SwitchRow {
                 checked: !!sp.s.hide_unsupported
                 onToggled: sp.set("hide_unsupported", value)
                 titleText: i18n.tr("Hide unsupported snaps")
@@ -73,6 +79,15 @@ Page {
                 good: !!sp.sys.compat
                 titleText: i18n.tr("Compatibility mode (X11 + Turnip)")
                 subtitleText: sp.sys.compat ? i18n.tr("Available") : (sp.sys.compat_reason || "")
+            }
+            StatusRow {
+                good: true
+                iconName: "reload"
+                alwaysAction: true
+                titleText: i18n.tr("Reset all snap environments")
+                subtitleText: i18n.tr("Fixes snaps that stopped seeing the GPU after an update or a connection change. Running snaps are not stopped")
+                actionText: i18n.tr("Reset")
+                onAction: root.run("reset-all", "all", [])
             }
             StatusRow {
                 good: true
@@ -114,7 +129,7 @@ Page {
                 height: ab.height
                 ListItemLayout {
                     id: ab
-                    title.text: "Snapshelf 0.2.0"
+                    title.text: "Snapshelf 0.3.0"
                     subtitle.text: i18n.tr("Find and install arm64 snaps that work on Ubuntu Touch. Not affiliated with Canonical. " +
                                            "This project was created in cooperation with an AI assistant.")
                     subtitle.wrapMode: Text.WordWrap

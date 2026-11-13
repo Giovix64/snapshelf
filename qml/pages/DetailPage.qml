@@ -9,7 +9,9 @@ Page {
     property string snapTitle
     property var d: ({})
     property bool loading: true
-    property var compatSupport: ({ "available": false })
+    property var modeSupport: ({})
+    readonly property var modeNames: ["default", "x11-gpu", "x11-sw", "wl-safe"]
+    property var diag: null
     property int channelIndex: 0
     readonly property bool queued: root.isQueued(snapName)
     readonly property bool running: root.busyName === snapName
@@ -30,9 +32,36 @@ Page {
     function confirm(title, text, confirmText, fn) {
         PopupUtils.open(confirmDialog, root, { "title": title, "text": text, "confirmText": confirmText, "callback": fn })
     }
+    function modeTitle(m) {
+        switch (m) {
+        case "x11-gpu": return i18n.tr("X11 + GPU (Turnip)")
+        case "x11-sw": return i18n.tr("X11, software rendering")
+        case "wl-safe": return i18n.tr("Wayland, software rendering")
+        default: return i18n.tr("Standard")
+        }
+    }
+    function setMode(m) {
+        py.call("backend.set_launch_mode", [snapName, m], function(r) {
+            dp.d = Object.assign({}, dp.d, { "launch_mode": r.mode })
+            modeSel.selectedIndex = Math.max(0, modeNames.indexOf(r.mode))
+            if (!r.ok) root.toast(r.msg)
+            else if (m !== "default") root.toast(i18n.tr("Use the new \"%1\" icon in the app drawer").arg((d.title || snapName) + dp.modeSuffix(m)))
+        })
+    }
+    function modeSuffix(m) { return m === "x11-gpu" ? " (GPU)" : m === "x11-sw" ? " (X11)" : m === "wl-safe" ? " (safe)" : "" }
+    function diagnose() {
+        diag = { "lines": [], "suggestions": [{ "fix": "", "text": i18n.tr("Reading the log…") }] }
+        py.call("backend.diagnose", [snapName], function(r) { dp.diag = r })
+    }
+    function applyFix(fix) {
+        if (fix === "reset" || fix === "devmode") root.run(fix, snapName, [])
+        else if (fix === "reexec") py.call("backend.fix_reexec", [], function() { root.run("reset", dp.snapName, []) })
+        else setMode(fix)
+        diag = null
+    }
     Component.onCompleted: {
         load()
-        py.call("backend.compat_support", [], function(s) { dp.compatSupport = s })
+        py.call("backend.mode_support", [], function(s) { dp.modeSupport = s })
     }
     Connections { target: root; function onDataRevisionChanged() { dp.load() } }
 
@@ -53,7 +82,7 @@ Page {
         anchors { top: dh.bottom; left: parent.left; right: parent.right; bottom: parent.bottom }
         contentHeight: col.height + units.gu(4)
         clip: true
-        visible: !!dp.d.name || !!dp.d.error
+        visible: !!(!!dp.d.name || !!dp.d.error)
 
         Column {
             id: col
@@ -62,7 +91,7 @@ Page {
             spacing: units.gu(1.5)
 
             Label {
-                visible: !!dp.d.error
+                visible: !!(!!dp.d.error)
                 text: dp.d.error || ""
                 color: theme.palette.normal.negative
                 wrapMode: Text.WordWrap; width: parent.width
@@ -127,7 +156,7 @@ Page {
                 enabled: !dp.queued
 
                 Button {
-                    visible: !dp.d.installed && dp.d.level !== "no" && !dp.d.error
+                    visible: !!(!dp.d.installed && dp.d.level !== "no" && !dp.d.error)
                     color: theme.palette.normal.positive
                     text: dp.d.gpu ? i18n.tr("Install (with GPU)") : i18n.tr("Install")
                     onClicked: {
@@ -136,31 +165,31 @@ Page {
                     }
                 }
                 Button {
-                    visible: !!dp.d.installed && dp.d.has_apps
+                    visible: !!(!!dp.d.installed && dp.d.has_apps)
                     color: theme.palette.normal.positive
                     text: i18n.tr("Open")
                     onClicked: root.openApp(dp.snapName)
                 }
                 Button {
-                    visible: !!dp.d.update
+                    visible: !!(!!dp.d.update)
                     color: theme.palette.normal.focus
                     text: i18n.tr("Update")
                     onClicked: root.run("refresh", dp.snapName, [])
                 }
                 Button {
                     readonly property var ch: (dp.d.channels || [])[dp.channelIndex]
-                    visible: !!dp.d.installed && !!ch && ch.name !== dp.d.installed_channel
+                    visible: !!(!!dp.d.installed && !!ch && ch.name !== dp.d.installed_channel)
                              && "latest/" + dp.d.installed_channel !== ch.name
                     text: i18n.tr("Switch to %1").arg(ch ? ch.label : "")
                     onClicked: root.run("switch", dp.snapName, [ch.name])
                 }
                 Button {
-                    visible: !!dp.d.installed && dp.d.gpu && !dp.d.gpu_connected
+                    visible: !!(!!dp.d.installed && dp.d.gpu && !dp.d.gpu_connected)
                     text: i18n.tr("Connect GPU")
                     onClicked: root.run("gpu", dp.snapName, [])
                 }
                 Button {
-                    visible: !!dp.d.installed
+                    visible: !!(!!dp.d.installed)
                     color: theme.palette.normal.negative
                     text: i18n.tr("Remove")
                     onClicked: dp.confirm(i18n.tr("Remove %1?").arg(dp.d.title), i18n.tr("The application and its data will be removed."),
@@ -193,7 +222,7 @@ Page {
 
             // ------------------------------------------------ installed options
             Column {
-                visible: !!dp.d.installed && dp.d.has_apps
+                visible: !!(!!dp.d.installed && dp.d.has_apps)
                 width: parent.width
                 ListItem {
                     height: pinRow.height
@@ -212,27 +241,104 @@ Page {
                         }
                     }
                 }
-                ListItem {
-                    height: compatRow.height
-                    enabled: dp.compatSupport.available
-                    onClicked: compatSwitch.clicked()
-                    ListItemLayout {
-                        id: compatRow
-                        title.text: i18n.tr("Compatibility mode (X11 + Turnip)")
-                        subtitle.text: dp.compatSupport.available
-                                       ? i18n.tr("For apps that open as an empty grey window: run them in landscape X11 with the Mesa Turnip GPU driver")
-                                       : dp.compatSupport.reason || ""
-                        subtitle.maximumLineCount: 3
-                        subtitle.wrapMode: Text.WordWrap
-                        Switch {
-                            id: compatSwitch
-                            SlotsLayout.position: SlotsLayout.Trailing
-                            checked: !!dp.d.compat_mode
-                            onClicked: py.call("backend.set_compat_mode", [dp.snapName, !dp.d.compat_mode], function(r) {
-                                dp.d = Object.assign({}, dp.d, { "compat_mode": r.enabled })
-                                if (!r.ok && r.msg) root.toast(r.msg)
-                            })
+            }
+
+            // ------------------------------------------------ troubleshooting
+            Column {
+                id: trouble
+                visible: !!(!!dp.d.installed && dp.d.has_apps)
+                width: parent.width
+                spacing: units.gu(1)
+
+                Label { text: i18n.tr("Troubleshooting"); font.bold: true; textSize: Label.Large }
+                Label {
+                    width: parent.width; wrapMode: Text.WordWrap; textSize: Label.Small
+                    color: theme.palette.normal.backgroundSecondaryText
+                    text: i18n.tr("If the app does not open, stays on the splash screen or shows an empty window, " +
+                                  "run the diagnosis or pick another launch mode. Other modes add an extra icon.")
+                }
+                OptionSelector {
+                    id: modeSel
+                    width: parent.width
+                    text: i18n.tr("Launch mode")
+                    model: dp.modeNames.map(function(m) {
+                        var t = dp.modeTitle(m)
+                        var s = dp.modeSupport[m]
+                        return (s && !s.available) ? t + "  (" + s.reason + ")" : t
+                    })
+                    selectedIndex: Math.max(0, dp.modeNames.indexOf(dp.d.launch_mode || "default"))
+                    onDelegateClicked: dp.setMode(dp.modeNames[index])
+                }
+                Flow {
+                    width: parent.width
+                    spacing: units.gu(1)
+                    enabled: !dp.queued
+                    Button { text: i18n.tr("Diagnose"); color: theme.palette.normal.focus; onClicked: dp.diagnose() }
+                    Button {
+                        visible: !!(!!dp.d.running)
+                        text: i18n.tr("Stop the app")
+                        onClicked: py.call("backend.stop_app", [dp.snapName], function(n) {
+                            root.toast(i18n.tr("Stopped (%1 processes)").arg(n)); dp.load()
+                        })
+                    }
+                    Button { text: i18n.tr("Reset environment"); onClicked: root.run("reset", dp.snapName, []) }
+                    Button {
+                        visible: !!(dp.d.gpu_connected)
+                        text: i18n.tr("Disconnect GPU")
+                        onClicked: dp.confirm(i18n.tr("Disconnect the GPU?"),
+                                              i18n.tr("The app will use software rendering. You can connect it again later."),
+                                              i18n.tr("Disconnect"), function() { root.run("nogpu", dp.snapName, []) })
+                    }
+                    Button {
+                        visible: !!(!dp.d.installed_devmode && dp.d.confinement !== "classic")
+                        text: i18n.tr("Switch to devmode")
+                        onClicked: root.run("devmode", dp.snapName, [])
+                    }
+                }
+                // diagnosis result
+                Column {
+                    visible: dp.diag !== null
+                    width: parent.width
+                    spacing: units.gu(1)
+                    Repeater {
+                        model: dp.diag ? dp.diag.suggestions : []
+                        delegate: Rectangle {
+                            width: trouble.width
+                            height: sugRow.height + units.gu(2)
+                            radius: units.gu(1)
+                            color: theme.palette.normal.base
+                            Row {
+                                id: sugRow
+                                x: units.gu(1.5); y: units.gu(1)
+                                width: parent.width - units.gu(3)
+                                spacing: units.gu(1)
+                                Icon {
+                                    width: units.gu(2.5); height: width
+                                    name: modelData.fix ? "dialog-warning-symbolic" : "info"
+                                }
+                                Label {
+                                    width: parent.width - units.gu(3.5) - (fixBtn.visible ? fixBtn.width + units.gu(1) : 0)
+                                    text: modelData.text
+                                    wrapMode: Text.WordWrap
+                                }
+                                Button {
+                                    id: fixBtn
+                                    visible: !!modelData.fix
+                                    text: i18n.tr("Apply")
+                                    color: theme.palette.normal.positive
+                                    onClicked: dp.applyFix(modelData.fix)
+                                }
+                            }
                         }
+                    }
+                    TextArea {
+                        width: parent.width
+                        height: units.gu(24)
+                        readOnly: true
+                        visible: !!dp.diag && dp.diag.lines.length > 0
+                        font.family: "Ubuntu Mono"
+                        font.pixelSize: units.gu(1.4)
+                        text: dp.diag ? dp.diag.lines.join("\n") : ""
                     }
                 }
             }
@@ -283,7 +389,7 @@ Page {
 
             Label { text: dp.d.description || ""; wrapMode: Text.WordWrap; width: parent.width; textFormat: Text.PlainText }
             Label {
-                visible: !!dp.d.website
+                visible: !!(!!dp.d.website)
                 text: "<a href=\"" + dp.d.website + "\">" + dp.d.website + "</a>"
                 linkColor: theme.palette.normal.activity
                 onLinkActivated: Qt.openUrlExternally(link)

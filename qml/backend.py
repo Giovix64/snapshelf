@@ -46,7 +46,7 @@ _ = gettext.translation(APP_ID, os.path.join(APP_DIR, "share", "locale"), fallba
 STORE = "https://api.snapcraft.io/v2/snaps"
 ARCH = "arm64"
 HEADERS = {"Snap-Device-Series": "16", "Snap-Device-Architecture": ARCH,
-           "User-Agent": "snapshelf/0.2 (Ubuntu Touch)"}
+           "User-Agent": "snapshelf/0.3 (Ubuntu Touch)"}
 FIND_FIELDS = "title,summary,base,confinement,version,media,publisher,type"
 INFO_FIELDS = ("title,summary,description,base,confinement,version,media,publisher,license,"
                "website,contact,snap-yaml,download,created-at")
@@ -63,6 +63,7 @@ DEFAULT_SETTINGS = {
     "connect_gpu": True,         # connect gpu-2404 to hybris-2404 when the snap supports it
     "devmode": True,             # the 4.14 kernel lacks the BPF device cgroup strict snaps need
     "hide_unsupported": False,   # hide classic snaps from the results
+    "known_fixes": True,         # apply the launch mode known snaps need (telegram-desktop…)
 }
 SNAP_DESKTOP_DIR = "/var/lib/snapd/desktop/applications"
 USER_APPS_DIR = os.path.join(HOME, ".local", "share", "applications")
@@ -359,6 +360,9 @@ def info(name):
         "has_apps": bool(apps),
         "pinned": is_pinned(name),
         "compat_mode": compat_mode_enabled(name),
+        "launch_mode": launch_mode(name) if inst else "default",
+        "known_fix": KNOWN_FIXES.get(name, ""),
+        "running": bool(running_pids(name)) if inst else False,
         "queued": name in _queued_names(),
     }
 
@@ -445,10 +449,7 @@ def open_app(name):
     apps = _snap_apps(name)
     if not apps:
         return ""
-    did = apps[0]["id"]
-    if compat_mode_enabled(name):
-        return COMPAT_PREFIX + did
-    return did
+    return _mode_id(launch_mode(name), apps[0]["id"])
 
 
 # ===================================================================== Lomiri launcher (sidebar)
@@ -467,30 +468,54 @@ def _set_launcher_items(items):
     subprocess.run(["gsettings", "set", LAUNCHER_SCHEMA, "items", str(list(items))], check=False)
 
 
-def _launcher_ids(name):
-    return ["appid://" + a["id"] for a in _snap_apps(name)], \
-           ["appid://" + COMPAT_PREFIX + a["id"] for a in _snap_apps(name)]
+def _mode_id(mode, desktop_id):
+    """Desktop id of an app in a launch mode. Lomiri reads ids with "_" as click/snap ids
+    ("AppID is empty"), so the extra launchers use "--": snapshelf-x11-<snap>--<app>."""
+    if mode == "default":
+        return desktop_id
+    return MODES[mode]["prefix"] + desktop_id.replace("_", "--", 1)
+
+
+def _all_prefixes(name):
+    return tuple("appid://" + (name + "_" if m == "default" else MODES[m]["prefix"] + name + "--")
+                 for m in MODES)
 
 
 def is_pinned(name):
-    items = _launcher_items()
-    prefixes = ("appid://" + name + "_", "appid://" + COMPAT_PREFIX + name + "_")
-    return any(i.startswith(prefixes) for i in items)
+    return any(i.startswith(_all_prefixes(name)) for i in _launcher_items())
 
 
 def pin(name, on):
-    """Add (on=True) or remove the snap's apps from the Lomiri launcher. Returns the new state."""
-    items = _launcher_items()
-    prefixes = ("appid://" + name + "_", "appid://" + COMPAT_PREFIX + name + "_")
-    items = [i for i in items if not i.startswith(prefixes)]
+    """Add (on=True) or remove the snap's apps from the Lomiri launcher. Returns the new state.
+
+    The pinned icon is the one of the current launch mode ("App (GPU)" in X11 + GPU mode…)."""
+    items = [i for i in _launcher_items() if not i.startswith(_all_prefixes(name))]
     if on:
-        normal, comp = _launcher_ids(name)
-        items += comp if compat_mode_enabled(name) else normal
+        mode = launch_mode(name)
+        items += ["appid://" + _mode_id(mode, a["id"]) for a in _snap_apps(name)]
     _set_launcher_items(items)
     return is_pinned(name)
 
 
-# ===================================================================== compatibility mode (X11 + Turnip)
+# ===================================================================== launch modes (fixes for apps that do not show up)
+# default : the snap's own launcher
+# x11-gpu : nested landscape X server + Mesa Turnip/Zink instead of libhybris ("App (GPU)").
+#           Fixes empty/grey windows and EGL errors of Qt6, wgpu/Vulkan, GTK4 apps on Mir 1.8.
+# x11-sw  : nested X server, software rendering ("App (X11)")
+# wl-safe : stays on Wayland, toolkits forced to software rendering ("App (safe)")
+MODES = {
+    "default": {"prefix": "", "suffix": "", "xland": False, "mesa": False},
+    "x11-gpu": {"prefix": "snapshelf-x11-", "suffix": " (GPU)", "xland": True, "mesa": True},
+    "x11-sw": {"prefix": "snapshelf-x11sw-", "suffix": " (X11)", "xland": True, "mesa": False},
+    "wl-safe": {"prefix": "snapshelf-safe-", "suffix": " (safe)", "xland": False, "mesa": False},
+}
+# snaps known to need a launch mode on Ubuntu Touch 24.04 (Mir 1.8 + libhybris)
+KNOWN_FIXES = {
+    "telegram-desktop": "x11-gpu",   # Qt6: "Cannot find EGLConfig", eglSwapBuffers fails on hybris
+    "pdfcraft": "x11-gpu",           # wgpu/Vulkan: window stays grey
+}
+
+
 def _find_first(paths, test):
     for p in paths:
         if test(p):
@@ -498,21 +523,37 @@ def _find_first(paths, test):
     return ""
 
 
-def compat_support():
-    """Is the X11 + Turnip compatibility mode available on this device?"""
+def _helpers():
     xland = _find_first(XLAND_CANDIDATES, lambda p: os.access(p, os.X_OK))
     mesa = _find_first(MESA_CANDIDATES, lambda p: os.path.exists(os.path.join(p, "freedreno_icd.json")))
-    if not xland:
-        return {"available": False, "reason": _("Needs the nested X server helper (nabu-xland)")}
-    if not mesa:
-        return {"available": False, "reason": _("Needs Mesa Turnip built for KGSL")}
-    return {"available": True, "reason": "", "xland": xland, "mesa": mesa}
+    return xland, mesa
+
+
+def mode_support():
+    """Which launch modes can be used on this device: {mode: {"available", "reason"}}."""
+    xland, mesa = _helpers()
+    out = {}
+    for mode, m in MODES.items():
+        reason = ""
+        if m["xland"] and not xland:
+            reason = _("Needs the nested X server helper (nabu-xland)")
+        elif m["mesa"] and not mesa:
+            reason = _("Needs Mesa Turnip built for KGSL")
+        out[mode] = {"available": not reason, "reason": reason}
+    return out
+
+
+def compat_support():
+    """Kept for the system checks: is the X11 + Turnip mode available?"""
+    xland, mesa = _helpers()
+    r = mode_support()["x11-gpu"]
+    return dict(r, xland=xland, mesa=mesa)
 
 
 def _runner_path():
     base = os.path.join("/opt/click.ubuntu.com", APP_ID, "current")
     root = base if os.path.isdir(base) else APP_DIR
-    return os.path.join(root, "bin", "snapshelf-x11-run")
+    return os.path.join(root, "bin", "snapshelf-run")
 
 
 def _app_command(name, app):
@@ -525,38 +566,182 @@ def _app_command(name, app):
         return ""
 
 
+def _mode_files(name, mode):
+    return glob.glob(os.path.join(USER_APPS_DIR, glob.escape(MODES[mode]["prefix"] + name) + "--*.desktop"))
+
+
+def launch_mode(name):
+    for mode in ("x11-gpu", "x11-sw", "wl-safe"):
+        if _mode_files(name, mode):
+            return mode
+    return "default"
+
+
 def compat_mode_enabled(name):
-    return bool(glob.glob(os.path.join(USER_APPS_DIR, glob.escape(COMPAT_PREFIX + name) + "_*.desktop")))
+    return launch_mode(name) == "x11-gpu"
 
 
-def set_compat_mode(name, on):
-    """Create (or remove) "<app> (GPU)" launchers that start the snap's apps on X11 + Turnip.
+def set_launch_mode(name, mode):
+    """Create the launchers of a launch mode ("<App> (GPU)"…), removing those of the other modes.
 
     The original launchers stay: Lomiri lists snap apps straight from snapd, so they cannot be hidden.
     """
+    if mode not in MODES:
+        return {"ok": False, "msg": "unknown mode", "mode": launch_mode(name)}
+    sup = mode_support()[mode]
+    if not sup["available"]:
+        return {"ok": False, "msg": sup["reason"], "mode": launch_mode(name)}
     was_pinned = is_pinned(name)
-    for f in glob.glob(os.path.join(USER_APPS_DIR, glob.escape(COMPAT_PREFIX + name) + "_*.desktop")):
-        os.remove(f)
-    if on:
-        sup = compat_support()
-        if not sup["available"]:
-            return {"ok": False, "msg": sup["reason"], "enabled": False}
+    for m in MODES:
+        if m != "default":
+            for f in _mode_files(name, m):
+                os.remove(f)
+    if mode != "default":
+        xland, _mesa = _helpers()
         os.makedirs(USER_APPS_DIR, exist_ok=True)
         for a in _snap_apps(name):
             cmd = _app_command(name, a["app"])
             if not cmd:
                 continue
             snap_app = name if a["app"] == name else name + "." + a["app"]
-            exec_line = " ".join(shlex.quote(x) for x in
-                                 [sup["xland"], "--host", _runner_path(), snap_app] + shlex.split(cmd))
-            with open(os.path.join(USER_APPS_DIR, COMPAT_PREFIX + a["id"] + ".desktop"), "w") as f:
+            argv = ([xland, "--host"] if MODES[mode]["xland"] else []) + \
+                [_runner_path(), mode, snap_app] + shlex.split(cmd)
+            with open(os.path.join(USER_APPS_DIR, _mode_id(mode, a["id"]) + ".desktop"), "w") as f:
                 f.write("[Desktop Entry]\nType=Application\nName=%s\nExec=%s\nIcon=%s\nTerminal=false\n"
-                        "X-Lomiri-Supported-Orientations=landscape;\n%s\n"
-                        % (a["name"] + " (GPU)", exec_line, a["icon"], MARK_COMPAT))
+                        "X-Lomiri-Supported-Orientations=%s\n%s\n"
+                        % (a["name"] + MODES[mode]["suffix"], " ".join(shlex.quote(x) for x in argv), a["icon"],
+                           "landscape;" if MODES[mode]["xland"] else "landscape;portrait;", MARK_COMPAT))
     if was_pinned:
         pin(name, True)
-    enabled = compat_mode_enabled(name)
-    return {"ok": enabled == bool(on), "msg": "", "enabled": enabled}
+    now = launch_mode(name)
+    return {"ok": now == mode, "msg": "", "mode": now}
+
+
+def set_compat_mode(name, on):
+    r = set_launch_mode(name, "x11-gpu" if on else "default")
+    return {"ok": r["ok"], "msg": r["msg"], "enabled": r["mode"] == "x11-gpu"}
+
+
+def _migrate_launchers():
+    """Snapshelf 0.2.0 wrote snapshelf-x11-<snap>_<app>.desktop, which Lomiri cannot start."""
+    for f in glob.glob(os.path.join(USER_APPS_DIR, "snapshelf-*_*.desktop")):
+        base = os.path.basename(f)
+        if base.startswith(APP_ID):
+            continue
+        try:
+            os.rename(f, os.path.join(USER_APPS_DIR, base.replace("_", "--", 1)))
+        except OSError:
+            pass
+    items = _launcher_items()
+    fixed = [i.replace("_", "--", 1) if i.startswith("appid://snapshelf-") else i for i in items]
+    if fixed != items:
+        _set_launcher_items(fixed)
+
+
+def apply_known_fix(name):
+    """Apply the launch mode a snap is known to need (if the device supports it). Returns the mode or ''."""
+    mode = KNOWN_FIXES.get(name, "")
+    if mode and mode_support()[mode]["available"] and launch_mode(name) == "default":
+        if set_launch_mode(name, mode)["ok"]:
+            return mode
+    return ""
+
+
+# ===================================================================== diagnosis
+# (pattern in the app log, suggested fix id, explanation)
+DIAG_RULES = [
+    ("GPU wrapper", "reset", _("The GPU content is connected but the snap environment is older: reset it")),
+    ("not found: ensure slot is connected", "reset", _("The GPU content is connected but the snap environment is older: reset it")),
+    ('library "libEGL.so" not found', "reexec", _("The snap cannot see the Android drivers (/android): use the Ubuntu Touch snapd tools and reset the environment")),
+    ('library "libvulkan.so" not found', "reexec", _("The snap cannot see the Android drivers (/android): use the Ubuntu Touch snapd tools and reset the environment")),
+    ("Cannot find EGLConfig", "x11-gpu", _("The app's EGL setup does not work with libhybris on Wayland: start it in X11 with the Turnip GPU driver")),
+    ("eglSwapBuffers failed", "x11-gpu", _("The app's EGL setup does not work with libhybris on Wayland: start it in X11 with the Turnip GPU driver")),
+    ("Context is lost", "x11-gpu", _("The app's EGL setup does not work with libhybris on Wayland: start it in X11 with the Turnip GPU driver")),
+    ("device is lost", "x11-gpu", _("The GPU device was lost: start the app in X11 with the Turnip GPU driver")),
+    ("glutin error", "x11-gpu", _("The app's EGL setup does not work with libhybris on Wayland: start it in X11 with the Turnip GPU driver")),
+    ("Failed to create EGLConfig", "x11-gpu", _("The app's EGL setup does not work with libhybris on Wayland: start it in X11 with the Turnip GPU driver")),
+    ("Failed to create wl_display", "x11-sw", _("The app cannot connect to Wayland: start it in X11")),
+    ("cannot open display", "x11-sw", _("The app needs an X server: start it in X11")),
+    ("Segmentation fault", "x11-gpu", _("The app crashed: if it uses the GPU, try it in X11 with the Turnip GPU driver")),
+    ("apparmor=\"DENIED\"", "devmode", _("AppArmor blocks the app: switch it to devmode")),
+    ("Permission denied", "devmode", _("Permission denied: switch the app to devmode")),
+]
+
+
+def _app_names(name):
+    try:
+        with open("/snap/%s/current/meta/snap.yaml" % name) as f:
+            y = yaml.safe_load(f) if yaml else {}
+        return list((y.get("apps") or {}).keys())
+    except Exception:
+        return [name]
+
+
+def app_log(name, minutes=60, limit=80):
+    """Recent journal lines of the snap's apps (and of the nested X server log in X11 modes)."""
+    ids = set(_app_names(name)) | {name}
+    args = ["journalctl", "--user", "--no-pager", "-o", "short-iso", "--since", "-%dmin" % minutes]
+    for i in ids:
+        args += ["-t", i]
+    try:
+        lines = subprocess.run(args, capture_output=True, text=True, timeout=20).stdout.splitlines()
+    except (OSError, subprocess.SubprocessError):
+        lines = []
+    lines = [l for l in lines if not l.startswith("-- ")]
+    if launch_mode(name) in ("x11-gpu", "x11-sw"):
+        xlog = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/run/user/%d" % os.getuid()), "nabu-xland.log")
+        try:
+            with open(xlog, errors="replace") as f:
+                xl = f.read().splitlines()[-200:]
+            lines += [l for l in xl if "Could not resolve keysym" not in l and l.strip() != ">"]
+        except OSError:
+            pass
+    return lines[-limit:]
+
+
+def diagnose(name):
+    """Read the app log, match known problems and suggest fixes."""
+    lines = app_log(name)
+    text = "\n".join(lines)
+    seen, sugg = set(), []
+    for pattern, fix, why in DIAG_RULES:
+        if pattern in text and fix not in seen:
+            seen.add(fix)
+            sugg.append({"fix": fix, "text": why, "pattern": pattern})
+    mode = launch_mode(name)
+    sugg = [s for s in sugg if s["fix"] != mode]            # already applied
+    if not lines:
+        sugg.append({"fix": "", "text": _("No log lines in the last hour: open the app once, then run the diagnosis again"), "pattern": ""})
+    elif not sugg:
+        sugg.append({"fix": "", "text": _("No known problem found in the log"), "pattern": ""})
+    return {"lines": lines, "suggestions": sugg, "mode": mode}
+
+
+def running_pids(name):
+    """PIDs of the snap's running processes (from their cgroup)."""
+    pids = []
+    tag = "snap." + name + "."
+    for d in os.listdir("/proc"):
+        if not d.isdigit():
+            continue
+        try:
+            with open("/proc/%s/cgroup" % d) as f:
+                if tag in f.read():
+                    pids.append(int(d))
+        except OSError:
+            pass
+    return pids
+
+
+def stop_app(name):
+    """Terminate the snap's running processes (they belong to the user: no password needed)."""
+    pids = running_pids(name)
+    for pid in pids:
+        try:
+            os.kill(pid, 15)
+        except OSError:
+            pass
+    return len(pids)
 
 
 # ===================================================================== system checks
@@ -678,6 +863,12 @@ def _job_install(name, channel, gpu):
         gok, gerr = _connect_gpu(name)
         msg = _("Installed with GPU acceleration. You will find it in the app drawer.") if gok \
             else _("Installed, but the GPU could not be connected: %s") % gerr
+    if st["known_fixes"]:
+        mode = apply_known_fix(name)
+        if mode == "x11-gpu":
+            msg += " " + _("Known fix applied: use the \"(GPU)\" icon.")
+        elif mode:
+            msg += " " + _("Known fix applied.")
     if st["pin_after_install"] and _snap_apps(name):
         pin(name, True)
         msg += " " + _("Added to the launcher.")
@@ -685,12 +876,12 @@ def _job_install(name, channel, gpu):
 
 
 def _job_remove(name):
-    pinned_compat = compat_mode_enabled(name)
+    had_mode = launch_mode(name) != "default"
     ok, err = _run_change(name, ["remove", name], _("Removing %s…") % name)
-    if ok:
+    if ok:  # launchers are found by prefix, so this works once the snap is gone
         pin(name, False)
-        if pinned_compat:
-            set_compat_mode(name, False)
+        if had_mode:
+            set_launch_mode(name, "default")
         return True, _("Removed.")
     return False, err or _("Removal failed")
 
@@ -708,6 +899,40 @@ def _job_switch(name, channel):
 def _job_gpu(name):
     ok, err = _connect_gpu(name)
     return (True, _("GPU connected.")) if ok else (False, err)
+
+
+def _discard_ns(name):
+    rc, out = _sudo(["/usr/lib/snapd/snap-discard-ns", name], timeout=60)
+    return rc == 0, out
+
+
+def _job_reset(name):
+    """Drop the snap's mount namespace: the next start rebuilds it (GPU content, /android)."""
+    stop_app(name)
+    ok, err = _discard_ns(name)
+    return (True, _("Environment reset. Open the app again.")) if ok else (False, err)
+
+
+def _job_reset_all(_name):
+    names = [s.get("name") for s in _installed_raw() if s.get("apps")]
+    failed = [n for n in names if not _discard_ns(n)[0]]
+    if failed:
+        return False, _("Could not reset: %s") % ", ".join(failed)
+    return True, _("All snap environments reset (%d).") % len(names)
+
+
+def _job_nogpu(name):
+    """Disconnect hybris: the snap falls back to its own Mesa (software rendering)."""
+    rc, out = _sudo(["snap", "disconnect", name + ":" + GPU_PLUG])
+    if rc != 0:
+        return False, out
+    _discard_ns(name)
+    return True, _("GPU disconnected: the app now uses software rendering.")
+
+
+def _job_devmode(name):
+    ok, err = _run_change(name, ["refresh", "--devmode", name], _("Switching %s to devmode…") % name)
+    return (True, _("Now in devmode.")) if ok else (False, err or _("Could not switch to devmode"))
 
 
 # --------------------------------------------------------------------- job queue
@@ -730,7 +955,8 @@ def _worker():
         kind, name, args = _jobs.get()
         try:
             fn = {"install": _job_install, "remove": _job_remove, "refresh": _job_refresh,
-                  "switch": _job_switch, "gpu": _job_gpu}[kind]
+                  "switch": _job_switch, "gpu": _job_gpu, "nogpu": _job_nogpu, "reset": _job_reset,
+                  "reset-all": _job_reset_all, "devmode": _job_devmode}[kind]
             ok, msg = fn(name, *args)
         except Exception as e:  # never let the worker die
             ok, msg = False, str(e)
@@ -743,6 +969,8 @@ def _worker():
 
 
 threading.Thread(target=_worker, daemon=True).start()
+if pyotherside.__class__.__name__ != "_NoPyotherside":   # only inside the app, not in the unit tests
+    threading.Thread(target=_migrate_launchers, daemon=True).start()
 
 
 def enqueue(kind, name, args=None):

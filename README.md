@@ -28,12 +28,31 @@ them through snapd.
   - Snaps that support it get the GPU connected automatically (`snap connect <snap>:gpu-2404 hybris-2404:gpu-2404`);
     hybris-2404 is installed first if needed.
 - **Launcher**: optionally pin new apps to the Lomiri sidebar, or pin/unpin any installed snap.
-- **Compatibility mode (X11 + Turnip)**, for snaps whose window stays empty or grey on Mir 1.8 (for example
-  wgpu/Vulkan apps). Snapshelf creates an extra "*App* (GPU)" launcher that runs the snap in a landscape
-  nested X server with the Mesa Turnip driver on KGSL instead of libhybris. This needs the helpers of the nabu port
-  (`nabu-xland` and a Mesa Turnip build); otherwise the option is disabled.
+- **Troubleshooting** for every installed app:
+  - **Launch modes**. Each mode adds an extra launcher next to the original one, because Lomiri lists snap apps
+    straight from snapd:
+
+    | Mode | Launcher | What it does |
+    |---|---|---|
+    | X11 + GPU (Turnip) | *App* (GPU) | landscape nested X server, Mesa Turnip/Zink on KGSL instead of libhybris. Fixes empty or grey windows and EGL errors of Qt6, wgpu/Vulkan and GTK4 apps on Mir 1.8 (Telegram, PdfCraft) |
+    | X11, software | *App* (X11) | nested X server, software rendering |
+    | Wayland, software | *App* (safe) | stays on Wayland and forces Qt, GTK, wgpu and SDL to software rendering |
+
+    The X11 modes need the helpers of the nabu port (`nabu-xland`, and a Mesa Turnip build for the GPU mode);
+    unavailable modes say why.
+  - **Diagnose** reads the app's recent log and recognises known problems:
+    - "Cannot find EGLConfig", `eglSwapBuffers` failures, lost context or device, glutin errors;
+    - `libEGL.so not found`, a missing GPU wrapper;
+    - no Wayland or X display, crashes, AppArmor denials.
+
+    For each one it suggests a fix you can apply with one tap.
+  - **Repairs**: stop the app, reset the snap environment (mount namespace), connect or disconnect the hybris GPU,
+    switch to devmode.
+  - **Known fixes**, applied automatically after installing: snaps known to need a launch mode (telegram-desktop,
+    pdfcraft) get it straight away.
 - **System checks** with one-tap fixes:
   - hybris-2404 installed;
+  - "Reset all snap environments";
   - `SNAP_REEXEC=0`, which keeps `snap` on the Ubuntu Touch snapd tools. Their snap-confine is the one that mounts
     `/android` for libhybris inside snaps. Without it, GPU snaps fail with `libEGL.so not found` once the snapd snap
     is installed.
@@ -78,7 +97,7 @@ Translations live in `po/`. Run `./update-translations.sh` after changing string
 | `qml/pages/` | Browse (discover/installed/updates), Detail, Settings, dialogs |
 | `qml/components/` | list delegate, badge and settings rows |
 | `qml/backend.py` | Store API, snapd REST, queue, launcher, compatibility mode, system checks |
-| `bin/snapshelf-x11-run` | compatibility-mode runner (X11 + Mesa Turnip/Zink inside the snap environment) |
+| `bin/snapshelf-run` | launch-mode runner (`x11-gpu`, `x11-sw`, `wl-safe`) inside the snap environment |
 | `po/` | translation template and Italian translation |
 | `tests/` | unit tests for the backend |
 

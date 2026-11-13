@@ -8,6 +8,8 @@ ListItem {
     property string titleText
     property string subtitleText
     property string actionText
+    property string iconName: ""          // overrides the ok/warning icon
+    property bool alwaysAction: false     // show the button even when good
     signal action()
 
     height: lay.height + (divider.visible ? divider.height : 0)
@@ -21,12 +23,13 @@ ListItem {
         Icon {
             SlotsLayout.position: SlotsLayout.Leading
             width: units.gu(3); height: width
-            name: row.good ? "ok" : "dialog-warning-symbolic"
-            color: row.good ? theme.palette.normal.positive : theme.palette.normal.negative
+            name: row.iconName !== "" ? row.iconName : (row.good ? "ok" : "dialog-warning-symbolic")
+            color: row.iconName !== "" ? theme.palette.normal.backgroundText
+                   : (row.good ? theme.palette.normal.positive : theme.palette.normal.negative)
         }
         Button {
             SlotsLayout.position: SlotsLayout.Trailing
-            visible: !row.good && row.actionText !== ""
+            visible: (!row.good || row.alwaysAction) && row.actionText !== ""
             text: row.actionText
             onClicked: row.action()
         }

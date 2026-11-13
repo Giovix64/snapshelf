@@ -1,0 +1,45 @@
+#!/bin/sh
+# Snapshelf launch modes: start a snap app with fixes for Ubuntu Touch 24.04 (Mir 1.8 + libhybris).
+#
+# usage: snapshelf-run <mode> <snap>[.<app>] <command relative to $SNAP> [args...]
+#   x11-gpu  X11 (nested X server, DISPLAY already set) + Mesa Turnip/Zink instead of libhybris
+#   x11-sw   X11, software rendering
+#   wl-safe  Wayland, toolkits forced to software rendering
+set -e
+MODE=$1; APP=$2; shift 2
+CMD=$*
+SCALE=${SNAPSHELF_SCALE:-2}
+# SNAP_REEXEC=0: the UBports snap-confine (not the one in the snapd snap) builds the namespace with /android
+export SNAP_REEXEC=0
+
+X11ENV="unset WAYLAND_DISPLAY
+export GDK_BACKEND=x11 QT_QPA_PLATFORM=xcb SDL_VIDEODRIVER=x11 ELECTRON_OZONE_PLATFORM_HINT=x11
+export WINIT_X11_SCALE_FACTOR=$SCALE GDK_SCALE=$SCALE QT_SCALE_FACTOR=$SCALE"
+SWENV="export LIBGL_ALWAYS_SOFTWARE=1 QT_QUICK_BACKEND=software QT_XCB_GL_INTEGRATION=none GSK_RENDERER=cairo
+export GDK_DISABLE=gl,vulkan GDK_GL=disable WGPU_BACKEND=gl SDL_RENDER_DRIVER=software"
+
+case "$MODE" in
+x11-gpu)
+    M=${SNAPSHELF_MESA:-}
+    if [ -z "$M" ]; then
+        for d in "$HOME/.local/share/nabu-mesa" "$HOME/.local/share/firefox.fuseteam/nabu-mesa"; do
+            [ -f "$d/freedreno_icd.json" ] && { M=$d; break; }
+        done
+    fi
+    [ -n "$M" ] || { echo "snapshelf-run: Mesa Turnip not found" >&2; exit 1; }
+    SETUP="$X11ENV
+export LD_LIBRARY_PATH=\"$M/lib:\$LD_LIBRARY_PATH\"
+export VK_DRIVER_FILES=\"$M/freedreno_icd.json\" VK_ICD_FILENAMES=\"$M/freedreno_icd.json\" MESA_VK_WSI_DEBUG=sw
+export LIBGL_DRIVERS_PATH=\"$M/lib/dri\" MESA_LOADER_DRIVER_OVERRIDE=zink LIBGL_KOPPER_DRI2=1" ;;
+x11-sw)
+    SETUP="$X11ENV
+$SWENV" ;;
+wl-safe)
+    SETUP="$SWENV" ;;
+*)
+    echo "snapshelf-run: unknown mode $MODE" >&2; exit 2 ;;
+esac
+
+echo "=== snapshelf-run $MODE $APP $(date)" >&2
+exec snap run --shell "$APP" -c "$SETUP
+exec \$SNAP/$CMD"

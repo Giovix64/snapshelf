@@ -112,8 +112,7 @@ class DesktopTest(unittest.TestCase):
                   mock.patch.object(b, "_launcher_items", side_effect=lambda: list(self.items)),
                   mock.patch.object(b, "_set_launcher_items", side_effect=self._set),
                   mock.patch.object(b, "_app_command", return_value="bin/demo --flag"),
-                  mock.patch.object(b, "compat_support", return_value={
-                      "available": True, "reason": "", "xland": "/x/nabu-xland", "mesa": "/m"})]
+                  mock.patch.object(b, "_helpers", return_value=("/x/nabu-xland", "/m"))]
         for p in self.p:
             p.start()
 
@@ -140,15 +139,58 @@ class DesktopTest(unittest.TestCase):
         b.pin("demo", True)
         r = b.set_compat_mode("demo", True)
         self.assertTrue(r["enabled"])
-        path = os.path.join(self.userdir, "snapshelf-x11-demo_demo.desktop")
+        path = os.path.join(self.userdir, "snapshelf-x11-demo--demo.desktop")
         text = open(path).read()
         self.assertIn("Name=Demo (GPU)", text)
-        self.assertIn("snapshelf-x11-run demo bin/demo --flag", text)
-        self.assertEqual(self.items, ["appid://other", "appid://snapshelf-x11-demo_demo"])
-        self.assertEqual(b.open_app("demo"), "snapshelf-x11-demo_demo")
+        self.assertIn("snapshelf-run x11-gpu demo bin/demo --flag", text)
+        self.assertEqual(self.items, ["appid://other", "appid://snapshelf-x11-demo--demo"])
+        self.assertEqual(b.open_app("demo"), "snapshelf-x11-demo--demo")
         b.set_compat_mode("demo", False)
         self.assertFalse(os.path.exists(path))
         self.assertEqual(self.items, ["appid://other", "appid://demo_demo"])
+
+
+    def test_launch_modes(self):
+        self.assertEqual(b.launch_mode("demo"), "default")
+        r = b.set_launch_mode("demo", "wl-safe")
+        self.assertEqual(r["mode"], "wl-safe")
+        text = open(os.path.join(self.userdir, "snapshelf-safe-demo--demo.desktop")).read()
+        self.assertIn("Name=Demo (safe)", text)
+        self.assertNotIn("nabu-xland", text)               # Wayland mode: no nested X server
+        b.set_launch_mode("demo", "x11-sw")
+        self.assertEqual(os.listdir(self.userdir), ["snapshelf-x11sw-demo--demo.desktop"])  # one mode at a time
+        self.assertEqual(b.set_launch_mode("demo", "bogus")["ok"], False)
+
+    def test_known_fix(self):
+        with mock.patch.dict(b.KNOWN_FIXES, {"demo": "x11-gpu"}):
+            self.assertEqual(b.apply_known_fix("demo"), "x11-gpu")
+            self.assertEqual(b.apply_known_fix("demo"), "")  # already applied
+
+    def test_mode_unavailable_without_helpers(self):
+        with mock.patch.object(b, "_helpers", return_value=("", "")):
+            r = b.set_launch_mode("demo", "x11-gpu")
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["mode"], "default")
+
+
+class DiagnoseTest(unittest.TestCase):
+    def test_rules(self):
+        log = ["qt.qpa.wayland: eglSwapBuffers failed with 0x300d", "Cannot find EGLConfig, returning null config",
+               'dlopen failed: library "libEGL.so" not found']
+        with mock.patch.object(b, "app_log", return_value=log), \
+                mock.patch.object(b, "launch_mode", return_value="default"):
+            fixes = [s["fix"] for s in b.diagnose("x")["suggestions"]]
+        self.assertEqual(fixes, ["reexec", "x11-gpu"])     # one suggestion per fix, in rule order
+
+    def test_applied_fix_not_suggested(self):
+        with mock.patch.object(b, "app_log", return_value=["Cannot find EGLConfig"]), \
+                mock.patch.object(b, "launch_mode", return_value="x11-gpu"):
+            r = b.diagnose("x")
+        self.assertEqual([s["fix"] for s in r["suggestions"]], [""])   # "no known problem"
+
+    def test_empty_log(self):
+        with mock.patch.object(b, "app_log", return_value=[]), mock.patch.object(b, "launch_mode", return_value="default"):
+            self.assertEqual(b.diagnose("x")["suggestions"][0]["fix"], "")
 
 
 class QueueTest(unittest.TestCase):
