@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Snapshelf
+Comment=Find and install arm64 snaps that work on Ubuntu Touch
+Exec=qmlscene %u qml/Main.qml
+Icon=assets/logo.svg
+Terminal=false
+Type=Application
+X-Lomiri-Touch=true

@@ -1,0 +1,500 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"#-#-#-#-#  qml.pot (PACKAGE VERSION)  #-#-#-#-#\n"
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-13 18:34+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"#-#-#-#-#  py.pot (PACKAGE VERSION)  #-#-#-#-#\n"
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-13 18:28+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: qml/Main.qml:38 qml/pages/DetailPage.qml:252
+msgid "GPU"
+msgstr ""
+
+#: qml/Main.qml:40
+msgid "not supported"
+msgstr ""
+
+#: qml/Main.qml:41
+msgid "update"
+msgstr ""
+
+#: qml/Main.qml:43
+msgid "works"
+msgstr ""
+
+#: qml/Main.qml:59
+msgid "%1 is already in the queue"
+msgstr ""
+
+#: qml/Main.qml:65 qml/pages/BrowsePage.qml:147
+msgid "Everything is up to date"
+msgstr ""
+
+#: qml/Main.qml:71
+msgid "This snap has no graphical application"
+msgstr ""
+
+#: qml/Main.qml:98
+msgid "Internal error, see the log"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:49
+msgid "arm64 snaps for Ubuntu Touch"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:51 qml/pages/SettingsPage.qml:18
+msgid "Settings"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:52
+msgid "Reload"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:56
+msgid "Discover"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:56 qml/pages/SettingsPage.qml:59
+msgid "Installed"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:57
+msgid "Updates (%1)"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:57
+msgid "Updates"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:73
+msgid "Search snaps"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:88
+msgid "Featured"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:106
+msgid "Update all"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:145
+msgid "No results"
+msgstr ""
+
+#: qml/pages/BrowsePage.qml:146
+msgid "No snap applications installed"
+msgstr ""
+
+#: qml/pages/ConfirmDialog.qml:8 qml/pages/PasswordDialog.qml:28
+msgid "OK"
+msgstr ""
+
+#: qml/pages/ConfirmDialog.qml:17 qml/pages/PasswordDialog.qml:47
+msgid "Cancel"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:44
+msgid "Open in the Snap Store website"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:88
+msgid "verified"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:115 qml/pages/DetailPage.qml:248
+msgid "Channel"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:132
+msgid "Install (with GPU)"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:132 qml/pages/SettingsPage.qml:60
+msgid "Install"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:141
+msgid "Open"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:147
+msgid "Update"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:154
+msgid "Switch to %1"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:159
+msgid "Connect GPU"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:165 qml/pages/DetailPage.qml:167
+msgid "Remove"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:166
+msgid "Remove %1?"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:166
+msgid "The application and its data will be removed."
+msgstr ""
+
+#: qml/pages/DetailPage.qml:183 qml/components/SnapDelegate.qml:72
+msgid "Waiting in the queue…"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:203
+msgid "Show in the launcher"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:204
+msgid "Pin the app to the Lomiri sidebar"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:221 qml/pages/SettingsPage.qml:74
+msgid "Compatibility mode (X11 + Turnip)"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:223
+msgid ""
+"For apps that open as an empty grey window: run them in landscape X11 with "
+"the Mesa Turnip GPU driver"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:247
+msgid "Version"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:249
+msgid "Download size"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:250
+msgid "Base"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:251
+msgid "Confinement"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:252
+msgid "connected"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:252
+msgid "not connected"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:252
+msgid "supported"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:252
+msgid "no"
+msgstr ""
+
+#: qml/pages/DetailPage.qml:253
+msgid "License"
+msgstr ""
+
+#: qml/pages/PasswordDialog.qml:8
+msgid "Password"
+msgstr ""
+
+#: qml/pages/PasswordDialog.qml:9
+msgid ""
+"Installing and removing snaps needs administrator rights. Enter your "
+"password (the screen-lock passcode). It is kept only in memory while "
+"Snapshelf is open."
+msgstr ""
+
+#: qml/pages/PasswordDialog.qml:15
+msgid "Password or passcode"
+msgstr ""
+
+#: qml/pages/PasswordDialog.qml:23
+msgid "Wrong password"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:29
+msgid "Installing"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:33
+msgid "Add installed apps to the launcher"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:34
+msgid "Pin new apps to the Lomiri sidebar right after installing them"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:39
+msgid "Connect the GPU automatically"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:40
+msgid "Snaps that support it get hardware acceleration through hybris-2404"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:45
+msgid "Install in devmode"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:46
+msgid ""
+"Needed on kernels without the BPF device cgroup (such as 4.14). Turn off "
+"only if strict snaps start on your device"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:51
+msgid "Hide unsupported snaps"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:52
+msgid "Do not show classic snaps in the results"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:55
+msgid "System checks"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:58
+msgid "GPU support for snaps (hybris-2404)"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:59
+msgid "Not installed: snaps can only use software rendering"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:65
+msgid "Snaps see the Android GPU drivers"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:67
+msgid "SNAP_REEXEC=0 is set: snaps start with the Ubuntu Touch snapd tools"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:68
+msgid ""
+"GPU snaps may fail with 'libEGL.so not found'. The fix makes snaps use the "
+"Ubuntu Touch snapd tools (takes full effect after logging in again)"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:69
+msgid "Fix"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:70 qml/pages/SettingsPage.qml:94
+#: qml/pages/SettingsPage.qml:107
+msgid "Done"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:75
+msgid "Available"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:80
+msgid "The snapd snap is installed as well"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:83
+msgid "Privacy"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:88
+msgid "Forget the password"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:89
+msgid "The password is kept only in memory and never written to disk"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:93
+msgid "Forget"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:102
+msgid "Clear the Store cache"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:103
+msgid "Store answers are cached for 5 minutes"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:106
+msgid "Clear"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:112
+msgid "About"
+msgstr ""
+
+#: qml/pages/SettingsPage.qml:118
+msgid ""
+"Find and install arm64 snaps that work on Ubuntu Touch. Not affiliated with "
+"Canonical. This project was created in cooperation with an AI assistant."
+msgstr ""
+
+#: qml/components/SnapDelegate.qml:22
+msgid "installed"
+msgstr ""
+
+#: qml/backend.py:189
+msgid "Classic confinement: not supported on Ubuntu Touch"
+msgstr ""
+
+#: qml/backend.py:191
+msgid "Works, GPU accelerated (hybris-2404)"
+msgstr ""
+
+#: qml/backend.py:194
+msgid "core24: GPU acceleration possible"
+msgstr ""
+
+#: qml/backend.py:195
+msgid "core24: works, software rendering"
+msgstr ""
+
+#: qml/backend.py:197
+#, python-format
+msgid "%s: works, software rendering"
+msgstr ""
+
+#: qml/backend.py:198
+msgid "Should work"
+msgstr ""
+
+#: qml/backend.py:206
+msgid ""
+"Wayland only: the window may stay empty on Mir 1.8 (try the compatibility "
+"mode)"
+msgstr ""
+
+#: qml/backend.py:208
+msgid "Uses OpenGL without hybris: 3D will be slow (software)"
+msgstr ""
+
+#: qml/backend.py:210
+msgid "Installed in devmode (needed by the 4.14 kernel)"
+msgstr ""
+
+#: qml/backend.py:286 qml/backend.py:305
+#, python-format
+msgid "Snap Store not reachable: %s"
+msgstr ""
+
+#: qml/backend.py:327
+msgid "No arm64 version of this snap"
+msgstr ""
+
+#: qml/backend.py:506
+msgid "Needs the nested X server helper (nabu-xland)"
+msgstr ""
+
+#: qml/backend.py:508
+msgid "Needs Mesa Turnip built for KGSL"
+msgstr ""
+
+#: qml/backend.py:659
+msgid "Installing GPU support (hybris-2404)…"
+msgstr ""
+
+#: qml/backend.py:662
+msgid "Connecting the GPU…"
+msgstr ""
+
+#: qml/backend.py:673
+#, python-format
+msgid "Installing %s…"
+msgstr ""
+
+#: qml/backend.py:675
+msgid "Installation failed"
+msgstr ""
+
+#: qml/backend.py:676
+msgid "Installed. You will find it in the app drawer."
+msgstr ""
+
+#: qml/backend.py:679
+msgid "Installed with GPU acceleration. You will find it in the app drawer."
+msgstr ""
+
+#: qml/backend.py:680
+#, python-format
+msgid "Installed, but the GPU could not be connected: %s"
+msgstr ""
+
+#: qml/backend.py:683
+msgid "Added to the launcher."
+msgstr ""
+
+#: qml/backend.py:689
+#, python-format
+msgid "Removing %s…"
+msgstr ""
+
+#: qml/backend.py:694
+msgid "Removed."
+msgstr ""
+
+#: qml/backend.py:695
+msgid "Removal failed"
+msgstr ""
+
+#: qml/backend.py:699
+#, python-format
+msgid "Updating %s…"
+msgstr ""
+
+#: qml/backend.py:700
+msgid "Updated."
+msgstr ""
+
+#: qml/backend.py:700
+msgid "Update failed"
+msgstr ""
+
+#: qml/backend.py:704
+#, python-format
+msgid "Switching to %s…"
+msgstr ""
+
+#: qml/backend.py:705
+#, python-format
+msgid "Now following %s."
+msgstr ""
+
+#: qml/backend.py:705
+msgid "Channel switch failed"
+msgstr ""
+
+#: qml/backend.py:710
+msgid "GPU connected."
+msgstr ""

@@ -1,0 +1,170 @@
+"""Unit tests for the Snapshelf backend (no network, no snapd, no Lomiri needed).
+
+Run with:  python3 -m unittest discover -s tests
+"""
+import os
+import sys
+import tempfile
+import unittest
+from unittest import mock
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "qml"))
+import backend as b  # noqa: E402
+
+SNAP_YAML_GPU = """
+name: demo
+base: core24
+apps:
+  demo:
+    command: bin/demo --flag
+    plugs: [wayland, x11, opengl]
+plugs:
+  gpu-2404:
+    interface: content
+    target: $SNAP/gpu-2404
+"""
+SNAP_YAML_WAYLAND = """
+name: wl
+apps:
+  wl:
+    command: bin/wl
+    plugs: [wayland, opengl]
+"""
+
+
+class CompatTest(unittest.TestCase):
+    def test_levels(self):
+        self.assertEqual(b.compat("core24", "strict")[0], "good")       # search: GPU unknown
+        self.assertEqual(b.compat("core24", "strict", True)[0], "gpu")
+        self.assertEqual(b.compat("core24", "strict", False)[0], "ok")
+        self.assertEqual(b.compat("core22", "strict")[0], "ok")
+        self.assertEqual(b.compat("core24", "classic", True)[0], "no")  # classic always wins
+
+    def test_plugs_and_notes(self):
+        self.assertIn("gpu-2404", b._yaml_plugs(SNAP_YAML_GPU))
+        self.assertIn("content", b._yaml_plugs(SNAP_YAML_GPU))
+        notes = b.notes_for(SNAP_YAML_WAYLAND, gpu=False, devmode=True)
+        self.assertEqual(len(notes), 3)   # wayland only, software OpenGL, devmode
+        self.assertEqual(b.notes_for(SNAP_YAML_GPU, gpu=True, devmode=False), [])
+
+    def test_helpers(self):
+        self.assertEqual(b.human_size(101363712), "101.4 MB")
+        self.assertEqual(b.human_size(None), "")
+        self.assertEqual(b._channel_label({"track": "latest", "risk": "edge"}), "edge")
+        self.assertEqual(b._channel_label({"track": "2.0", "risk": "stable"}), "2.0/stable")
+
+
+class SearchTest(unittest.TestCase):
+    RESULTS = {"results": [
+        {"name": "a", "snap": {"title": "A"}, "revision": {"base": "core24", "confinement": "strict", "type": "app"}},
+        {"name": "c", "snap": {"title": "C"}, "revision": {"base": "core22", "confinement": "classic", "type": "app"}},
+        {"name": "k", "snap": {"title": "K"}, "revision": {"base": "core22", "confinement": "strict", "type": "kernel"}},
+    ]}
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.p = [mock.patch.object(b, "_store_get", return_value=self.RESULTS),
+                  mock.patch.object(b, "snapd_get", side_effect=lambda path: [] if "refresh" in path else None),
+                  mock.patch.object(b, "_installed_raw", return_value=[{"name": "a"}]),
+                  mock.patch.object(b, "SETTINGS_FILE", os.path.join(self.tmp.name, "s.json"))]
+        for p in self.p:
+            p.start()
+
+    def tearDown(self):
+        for p in self.p:
+            p.stop()
+        self.tmp.cleanup()
+
+    def test_search_filters_and_marks(self):
+        r = b.search("x")
+        self.assertEqual([i["name"] for i in r["items"]], ["a", "c"])   # kernel snap dropped
+        self.assertTrue(r["items"][0]["installed"])
+        b.set_setting("hide_unsupported", True)
+        self.assertEqual([i["name"] for i in b.search("x")["items"]], ["a"])
+
+    def test_search_requests_arm64(self):
+        b.search("gimp")
+        url = b._store_get.call_args[0][0]
+        self.assertIn("architecture=arm64", url)
+        self.assertIn("q=gimp", url)
+
+    def test_store_error(self):
+        with mock.patch.object(b, "_store_get", side_effect=OSError("offline")):
+            r = b.search("x")
+        self.assertEqual(r["items"], [])
+        self.assertIn("offline", r["error"])
+
+
+class DesktopTest(unittest.TestCase):
+    """Launcher pinning and compatibility mode on a fake filesystem."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        t = self.tmp.name
+        self.snapdir = os.path.join(t, "snapd")
+        self.userdir = os.path.join(t, "apps")
+        os.makedirs(self.snapdir)
+        with open(os.path.join(self.snapdir, "demo_demo.desktop"), "w") as f:
+            f.write("[Desktop Entry]\nName=Demo\nExec=/snap/bin/demo\nIcon=/snap/demo/41/meta/gui/demo.png\n")
+        self.items = ["appid://other"]
+        self.p = [mock.patch.object(b, "SNAP_DESKTOP_DIR", self.snapdir),
+                  mock.patch.object(b, "USER_APPS_DIR", self.userdir),
+                  mock.patch.object(b, "_launcher_items", side_effect=lambda: list(self.items)),
+                  mock.patch.object(b, "_set_launcher_items", side_effect=self._set),
+                  mock.patch.object(b, "_app_command", return_value="bin/demo --flag"),
+                  mock.patch.object(b, "compat_support", return_value={
+                      "available": True, "reason": "", "xland": "/x/nabu-xland", "mesa": "/m"})]
+        for p in self.p:
+            p.start()
+
+    def _set(self, items):
+        self.items = list(items)
+
+    def tearDown(self):
+        for p in self.p:
+            p.stop()
+        self.tmp.cleanup()
+
+    def test_apps_icon_uses_current(self):
+        apps = b._snap_apps("demo")
+        self.assertEqual(apps[0]["id"], "demo_demo")
+        self.assertEqual(apps[0]["icon"], "/snap/demo/current/meta/gui/demo.png")
+
+    def test_pin_unpin(self):
+        self.assertTrue(b.pin("demo", True))
+        self.assertEqual(self.items, ["appid://other", "appid://demo_demo"])
+        self.assertFalse(b.pin("demo", False))
+        self.assertEqual(self.items, ["appid://other"])
+
+    def test_compat_mode_swaps_pinned_launcher(self):
+        b.pin("demo", True)
+        r = b.set_compat_mode("demo", True)
+        self.assertTrue(r["enabled"])
+        path = os.path.join(self.userdir, "snapshelf-x11-demo_demo.desktop")
+        text = open(path).read()
+        self.assertIn("Name=Demo (GPU)", text)
+        self.assertIn("snapshelf-x11-run demo bin/demo --flag", text)
+        self.assertEqual(self.items, ["appid://other", "appid://snapshelf-x11-demo_demo"])
+        self.assertEqual(b.open_app("demo"), "snapshelf-x11-demo_demo")
+        b.set_compat_mode("demo", False)
+        self.assertFalse(os.path.exists(path))
+        self.assertEqual(self.items, ["appid://other", "appid://demo_demo"])
+
+
+class QueueTest(unittest.TestCase):
+    def test_enqueue_needs_password_and_deduplicates(self):
+        with mock.patch.object(b, "_password", None):
+            self.assertFalse(b.enqueue("refresh", "x"))
+        done = []
+        with mock.patch.object(b, "_password", "pw"), \
+                mock.patch.dict(b.__dict__, {"_job_refresh": lambda name: (done.append(name) or (True, "ok"))}), \
+                mock.patch.object(b.pyotherside, "send", create=True):
+            with b._pending_lock:          # hold the worker until both calls are queued
+                b._pending.append("y")
+            self.assertFalse(b.enqueue("refresh", "y"))   # already queued
+            with b._pending_lock:
+                b._pending.remove("y")
+
+
+if __name__ == "__main__":
+    unittest.main()

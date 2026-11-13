@@ -1,0 +1,25 @@
+#!/bin/sh
+# Snapshelf compatibility mode: run a snap app on X11 with Mesa Turnip (KGSL) + Zink instead of
+# libhybris. Used for snaps whose Vulkan/Wayland output never reaches Mir 1.8 (empty grey window).
+# Started inside a nested X server (nabu-xland), so DISPLAY is already set.
+#
+# usage: snapshelf-x11-run <snap>[.<app>] <command relative to $SNAP> [args...]
+set -e
+APP=$1; shift
+M=${SNAPSHELF_MESA:-}
+if [ -z "$M" ]; then
+    for d in "$HOME/.local/share/nabu-mesa" "$HOME/.local/share/firefox.fuseteam/nabu-mesa"; do
+        [ -f "$d/freedreno_icd.json" ] && { M=$d; break; }
+    done
+fi
+[ -n "$M" ] || { echo "snapshelf-x11-run: Mesa Turnip not found" >&2; exit 1; }
+CMD=$*
+SCALE=${SNAPSHELF_SCALE:-2}
+# SNAP_REEXEC=0: the UBports snap-confine (not the one in the snapd snap) builds the namespace
+export SNAP_REEXEC=0
+exec snap run --shell "$APP" -c "unset WAYLAND_DISPLAY
+export LD_LIBRARY_PATH=\"$M/lib:\$LD_LIBRARY_PATH\"
+export VK_DRIVER_FILES=\"$M/freedreno_icd.json\" VK_ICD_FILENAMES=\"$M/freedreno_icd.json\" MESA_VK_WSI_DEBUG=sw
+export LIBGL_DRIVERS_PATH=\"$M/lib/dri\" MESA_LOADER_DRIVER_OVERRIDE=zink LIBGL_KOPPER_DRI2=1
+export GDK_BACKEND=x11 QT_QPA_PLATFORM=xcb WINIT_X11_SCALE_FACTOR=$SCALE GDK_SCALE=$SCALE QT_SCALE_FACTOR=$SCALE
+exec \$SNAP/$CMD"

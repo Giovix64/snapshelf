@@ -1,0 +1,13 @@
+clickable_minimum_required: 8.0.0
+builder: pure
+framework: ubuntu-touch-24.04-1.x
+kill: qmlscene
+prebuild: sh -c 'for po in po/*.po; do l=$(basename $po .po); mkdir -p share/locale/$l/LC_MESSAGES; msgfmt -o share/locale/$l/LC_MESSAGES/snapshelf.giovix64.mo $po; done'
+ignore:
+  - tests
+  - po
+  - build
+  - dist
+  - build.sh
+  - update-translations.sh
+  - README.md
