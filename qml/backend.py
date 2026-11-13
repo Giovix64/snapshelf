@@ -46,7 +46,7 @@ _ = gettext.translation(APP_ID, os.path.join(APP_DIR, "share", "locale"), fallba
 STORE = "https://api.snapcraft.io/v2/snaps"
 ARCH = "arm64"
 HEADERS = {"Snap-Device-Series": "16", "Snap-Device-Architecture": ARCH,
-           "User-Agent": "snapshelf/0.3 (Ubuntu Touch)"}
+           "User-Agent": "snapshelf/0.3.1 (Ubuntu Touch)"}
 FIND_FIELDS = "title,summary,base,confinement,version,media,publisher,type"
 INFO_FIELDS = ("title,summary,description,base,confinement,version,media,publisher,license,"
                "website,contact,snap-yaml,download,created-at")
@@ -469,15 +469,18 @@ def _set_launcher_items(items):
 
 
 def _mode_id(mode, desktop_id):
-    """Desktop id of an app in a launch mode. Lomiri reads ids with "_" as click/snap ids
-    ("AppID is empty"), so the extra launchers use "--": snapshelf-x11-<snap>--<app>."""
+    """Desktop id of an app in a launch mode: snapshelf-x11-<snap>.<app>
+
+    Lomiri reads ids with "_" as click/snap ids ("AppID is empty"), and lomiri-app-launch uses "--"
+    as separator in its unit names, so with "--" Lomiri rejects the window ("desktop_file_hint could
+    not be found"). Snap names cannot contain ".", so the dot is unambiguous."""
     if mode == "default":
         return desktop_id
-    return MODES[mode]["prefix"] + desktop_id.replace("_", "--", 1)
+    return MODES[mode]["prefix"] + desktop_id.replace("_", ".", 1)
 
 
 def _all_prefixes(name):
-    return tuple("appid://" + (name + "_" if m == "default" else MODES[m]["prefix"] + name + "--")
+    return tuple("appid://" + (name + "_" if m == "default" else MODES[m]["prefix"] + name + ".")
                  for m in MODES)
 
 
@@ -567,7 +570,7 @@ def _app_command(name, app):
 
 
 def _mode_files(name, mode):
-    return glob.glob(os.path.join(USER_APPS_DIR, glob.escape(MODES[mode]["prefix"] + name) + "--*.desktop"))
+    return glob.glob(os.path.join(USER_APPS_DIR, glob.escape(MODES[mode]["prefix"] + name) + ".*.desktop"))
 
 
 def launch_mode(name):
@@ -623,17 +626,20 @@ def set_compat_mode(name, on):
 
 
 def _migrate_launchers():
-    """Snapshelf 0.2.0 wrote snapshelf-x11-<snap>_<app>.desktop, which Lomiri cannot start."""
-    for f in glob.glob(os.path.join(USER_APPS_DIR, "snapshelf-*_*.desktop")):
+    """Older versions wrote snapshelf-x11-<snap>_<app> (0.2.0) or <snap>--<app> (0.3.0) launchers,
+    which Lomiri cannot start: rename them to <snap>.<app>."""
+    def fix(base):
+        return base.replace("_", ".", 1) if "_" in base else base.replace("--", ".", 1)
+    for f in glob.glob(os.path.join(USER_APPS_DIR, "snapshelf-*.desktop")):
         base = os.path.basename(f)
-        if base.startswith(APP_ID):
+        if base.startswith(APP_ID) or ("_" not in base and "--" not in base):
             continue
         try:
-            os.rename(f, os.path.join(USER_APPS_DIR, base.replace("_", "--", 1)))
+            os.rename(f, os.path.join(USER_APPS_DIR, fix(base)))
         except OSError:
             pass
     items = _launcher_items()
-    fixed = [i.replace("_", "--", 1) if i.startswith("appid://snapshelf-") else i for i in items]
+    fixed = [fix(i) if i.startswith("appid://snapshelf-") else i for i in items]
     if fixed != items:
         _set_launcher_items(fixed)
 

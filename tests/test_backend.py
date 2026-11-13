@@ -139,12 +139,12 @@ class DesktopTest(unittest.TestCase):
         b.pin("demo", True)
         r = b.set_compat_mode("demo", True)
         self.assertTrue(r["enabled"])
-        path = os.path.join(self.userdir, "snapshelf-x11-demo--demo.desktop")
+        path = os.path.join(self.userdir, "snapshelf-x11-demo.demo.desktop")
         text = open(path).read()
         self.assertIn("Name=Demo (GPU)", text)
         self.assertIn("snapshelf-run x11-gpu demo bin/demo --flag", text)
-        self.assertEqual(self.items, ["appid://other", "appid://snapshelf-x11-demo--demo"])
-        self.assertEqual(b.open_app("demo"), "snapshelf-x11-demo--demo")
+        self.assertEqual(self.items, ["appid://other", "appid://snapshelf-x11-demo.demo"])
+        self.assertEqual(b.open_app("demo"), "snapshelf-x11-demo.demo")
         b.set_compat_mode("demo", False)
         self.assertFalse(os.path.exists(path))
         self.assertEqual(self.items, ["appid://other", "appid://demo_demo"])
@@ -154,11 +154,11 @@ class DesktopTest(unittest.TestCase):
         self.assertEqual(b.launch_mode("demo"), "default")
         r = b.set_launch_mode("demo", "wl-safe")
         self.assertEqual(r["mode"], "wl-safe")
-        text = open(os.path.join(self.userdir, "snapshelf-safe-demo--demo.desktop")).read()
+        text = open(os.path.join(self.userdir, "snapshelf-safe-demo.demo.desktop")).read()
         self.assertIn("Name=Demo (safe)", text)
         self.assertNotIn("nabu-xland", text)               # Wayland mode: no nested X server
         b.set_launch_mode("demo", "x11-sw")
-        self.assertEqual(os.listdir(self.userdir), ["snapshelf-x11sw-demo--demo.desktop"])  # one mode at a time
+        self.assertEqual(os.listdir(self.userdir), ["snapshelf-x11sw-demo.demo.desktop"])  # one mode at a time
         self.assertEqual(b.set_launch_mode("demo", "bogus")["ok"], False)
 
     def test_known_fix(self):
@@ -171,6 +171,23 @@ class DesktopTest(unittest.TestCase):
             r = b.set_launch_mode("demo", "x11-gpu")
         self.assertFalse(r["ok"])
         self.assertEqual(r["mode"], "default")
+
+
+    def test_migrate_old_launcher_names(self):
+        os.makedirs(self.userdir, exist_ok=True)
+        for old in ("snapshelf-x11-demo_demo.desktop", "snapshelf-safe-foo--foo.desktop"):
+            open(os.path.join(self.userdir, old), "w").close()
+        self.items = ["appid://snapshelf-x11-demo_demo", "appid://snapshelf-safe-foo--foo"]
+        b._migrate_launchers()
+        self.assertEqual(sorted(os.listdir(self.userdir)),
+                         ["snapshelf-safe-foo.foo.desktop", "snapshelf-x11-demo.demo.desktop"])
+        self.assertEqual(self.items, ["appid://snapshelf-x11-demo.demo", "appid://snapshelf-safe-foo.foo"])
+
+    def test_ids_have_no_lomiri_separators(self):
+        b.set_launch_mode("demo", "x11-gpu")
+        for f in os.listdir(self.userdir):
+            self.assertNotIn("_", f)
+            self.assertNotIn("--", f)
 
 
 class DiagnoseTest(unittest.TestCase):

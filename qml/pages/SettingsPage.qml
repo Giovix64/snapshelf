@@ -129,7 +129,7 @@ Page {
                 height: ab.height
                 ListItemLayout {
                     id: ab
-                    title.text: "Snapshelf 0.3.0"
+                    title.text: "Snapshelf 0.3.1"
                     subtitle.text: i18n.tr("Find and install arm64 snaps that work on Ubuntu Touch. Not affiliated with Canonical. " +
                                            "This project was created in cooperation with an AI assistant.")
                     subtitle.wrapMode: Text.WordWrap
